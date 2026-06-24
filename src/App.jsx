@@ -195,18 +195,26 @@ Caso tenham qualquer dúvida, estaremos à disposição!`
     try {
       const response = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'anthropic-version': '2023-06-01',
+          'anthropic-dangerous-direct-browser-access': 'true',
+        },
         body: JSON.stringify({
           model: 'claude-sonnet-4-6',
           max_tokens: 1000,
           messages: [{ role: 'user', content: prompt }]
         })
       })
+      if (!response.ok) {
+        const errData = await response.json()
+        throw new Error(errData?.error?.message || 'Erro HTTP ' + response.status)
+      }
       const data = await response.json()
       const text = (data.content || []).filter(b => b.type === 'text').map(b => b.text).join('')
-      setReportText(text)
+      setReportText(text || 'Report sem conteúdo. Tente novamente.')
     } catch (err) {
-      setReportText('Erro ao gerar report. Tente novamente.')
+      setReportText('Erro ao gerar report: ' + err.message)
     }
     setGenerating(false)
   }
