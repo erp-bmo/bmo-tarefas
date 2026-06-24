@@ -133,16 +133,26 @@ function ReportView({ meetings, tasks, onToast }) {
     const result = { concluidas: [], andamento: [], pendentes: [] }
     const sevenDaysAgo = new Date()
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
+    sevenDaysAgo.setHours(0, 0, 0, 0)
+
+    // Parseia "DD/MM/YYYY" da date_label da reunião
+    const parseMeetingDate = (dateLabel) => {
+      const match = dateLabel.match(/(\d{2})\/(\d{2})\/(\d{4})/)
+      if (!match) return null
+      return new Date(`${match[3]}-${match[2]}-${match[1]}T00:00:00`)
+    }
 
     meetings.forEach(m => {
       const isClient = m.team === clientKey || (m.has_cliente && tasks.some(t => t.meeting_id === m.id && t.cliente === clientKey))
       if (!isClient) return
+
+      const meetingDate = parseMeetingDate(m.date_label)
+
       tasks.filter(t => t.meeting_id === m.id && t.status !== 'bloqueado').forEach(t => {
         if (m.has_cliente && t.cliente !== clientKey && m.team !== clientKey) return
         if (t.status === 'concluido') {
-          // Só inclui concluídas dos últimos 7 dias
-          const updatedAt = t.updated_at ? new Date(t.updated_at) : null
-          if (updatedAt && updatedAt >= sevenDaysAgo) {
+          // Só inclui concluídas de reuniões dos últimos 7 dias
+          if (meetingDate && meetingDate >= sevenDaysAgo) {
             result.concluidas.push(t)
           }
         } else if (t.status === 'andamento') {
