@@ -409,8 +409,136 @@ function TaskRow({ task, meeting, onUpdate, onToast }) {
   )
 }
 
+
+// ─── NewTaskModal ─────────────────────────────────────────────
+function NewTaskModal({ meeting, meetings, onClose, onSave, onToast }) {
+  const [desc, setDesc] = useState('')
+  const [resp, setResp] = useState('')
+  const [prazo, setPrazo] = useState('')
+  const [cliente, setCliente] = useState('')
+  const [saving, setSaving] = useState(false)
+
+  const handleSave = async () => {
+    if (!desc.trim()) { onToast('Descreva a tarefa antes de salvar'); return }
+    if (!resp.trim()) { onToast('Informe o responsável'); return }
+    setSaving(true)
+    const id = `manual-${meeting.id}-${Date.now()}`
+    const newTask = {
+      id,
+      meeting_id: meeting.id,
+      description: desc.trim(),
+      resp: resp.trim(),
+      cliente: cliente.trim(),
+      cliente_tag: 'tag-nd',
+      prazo: prazo,
+      prazo_fixed: '',
+      status: 'pendente',
+      sort_order: 999,
+    }
+    const { error } = await supabase.from('bmo_tasks').insert(newTask)
+    if (error) { onToast('Erro ao salvar tarefa'); setSaving(false); return }
+    onSave(newTask)
+    onToast('Tarefa criada ✓')
+    onClose()
+  }
+
+  const inputStyle = {
+    width: '100%', padding: '9px 12px', borderRadius: 6,
+    border: '1px solid var(--border)', fontSize: 13,
+    fontFamily: 'var(--font)', color: 'var(--text)',
+    outline: 'none', transition: 'border-color .15s',
+  }
+  const labelStyle = { fontSize: 12, fontWeight: 500, color: 'var(--text-muted)', marginBottom: 5, display: 'block' }
+
+  return (
+    <div onClick={e => e.target === e.currentTarget && onClose()} style={{
+      position: 'fixed', inset: 0, background: 'rgba(0,0,0,.35)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 400
+    }}>
+      <div style={{ background: '#fff', borderRadius: 10, border: '1px solid var(--border)', width: 480, maxWidth: '92vw', padding: 24, boxShadow: '0 8px 32px rgba(0,0,0,.12)' }}>
+        {/* Header */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+          <div>
+            <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text)' }}>Nova tarefa</div>
+            <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>{meeting.title}</div>
+          </div>
+          <button onClick={onClose} style={{ width: 28, height: 28, borderRadius: 6, border: '1px solid var(--border)', background: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+
+        {/* Fields */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div>
+            <label style={labelStyle}>Descrição da tarefa *</label>
+            <textarea
+              value={desc}
+              onChange={e => setDesc(e.target.value)}
+              placeholder="Descreva a tarefa..."
+              autoFocus
+              rows={3}
+              style={{ ...inputStyle, resize: 'vertical', lineHeight: 1.5 }}
+              onFocus={e => e.target.style.borderColor = 'var(--accent)'}
+              onBlur={e => e.target.style.borderColor = 'var(--border)'}
+            />
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div>
+              <label style={labelStyle}>Responsável *</label>
+              <input
+                value={resp}
+                onChange={e => setResp(e.target.value)}
+                placeholder="Ex: Felipe, Darlan..."
+                style={inputStyle}
+                onFocus={e => e.target.style.borderColor = 'var(--accent)'}
+                onBlur={e => e.target.style.borderColor = 'var(--border)'}
+              />
+            </div>
+            <div>
+              <label style={labelStyle}>Prazo</label>
+              <input
+                type="date"
+                value={prazo}
+                onChange={e => setPrazo(e.target.value)}
+                style={inputStyle}
+                onFocus={e => e.target.style.borderColor = 'var(--accent)'}
+                onBlur={e => e.target.style.borderColor = 'var(--border)'}
+              />
+            </div>
+          </div>
+          {meeting.has_cliente && (
+            <div>
+              <label style={labelStyle}>Cliente</label>
+              <input
+                value={cliente}
+                onChange={e => setCliente(e.target.value)}
+                placeholder="Nome do cliente relacionado"
+                style={inputStyle}
+                onFocus={e => e.target.style.borderColor = 'var(--accent)'}
+                onBlur={e => e.target.style.borderColor = 'var(--border)'}
+              />
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 20 }}>
+          <button onClick={onClose} style={{ padding: '8px 16px', borderRadius: 6, border: '1px solid var(--border-strong)', background: '#fff', fontSize: 13, cursor: 'pointer', color: 'var(--text)' }}>
+            Cancelar
+          </button>
+          <button onClick={handleSave} disabled={saving} style={{ padding: '8px 16px', borderRadius: 6, border: 'none', background: 'var(--accent)', color: '#fff', fontSize: 13, fontWeight: 500, cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? .7 : 1, display: 'flex', alignItems: 'center', gap: 6 }}>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            {saving ? 'Salvando...' : 'Criar tarefa'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ─── MeetingBlock ─────────────────────────────────────────────
-function MeetingBlock({ meeting, tasks, clientFilter, statusFilter, onUpdate, onToast }) {
+function MeetingBlock({ meeting, tasks, clientFilter, statusFilter, onUpdate, onAdd, onToast }) {
+  const [showNewTask, setShowNewTask] = useState(false)
   const color = TEAM_COLORS[meeting.team] || '#9B9890'
   const emoji = TEAM_EMOJIS[meeting.team] || '📋'
   const visibleTasks = tasks.filter(t => {
@@ -419,13 +547,17 @@ function MeetingBlock({ meeting, tasks, clientFilter, statusFilter, onUpdate, on
     const clientOk = clientFilter === 'all' || meeting.team === clientFilter || (meeting.has_cliente && t.cliente === clientFilter)
     return statusOk && clientOk
   })
-  if (visibleTasks.length === 0) return null
   const handleCopyMeeting = () => {
     const lines = [`${meeting.title} — ${meeting.date_label}\n`]
     visibleTasks.forEach(t => lines.push(`• ${t.description} | ${t.resp} | ${t.prazo_fixed||t.prazo||'—'} | ${STATUS_LABEL[t.status]}`))
     copyText(lines.join('\n')); onToast('Reunião copiada ✓')
   }
   const th = { padding:'7px 12px', textAlign:'left', fontSize:10, fontWeight:600, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'.05em', whiteSpace:'nowrap', background:'var(--bg)', borderBottom:'1px solid var(--border)' }
+
+  // Show block even if no visible tasks, so user can add tasks
+  const showBlock = visibleTasks.length > 0 || (clientFilter === 'all' || meeting.team === clientFilter)
+  if (!showBlock) return null
+
   return (
     <div style={{ marginBottom: 24 }}>
       <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:10 }}>
@@ -439,17 +571,40 @@ function MeetingBlock({ meeting, tasks, clientFilter, statusFilter, onUpdate, on
             </span>
           </div>
         </div>
-        <button onClick={handleCopyMeeting} style={{ marginLeft:'auto', fontSize:11, color:'var(--accent)', background:'none', border:'none', padding:'4px 8px', borderRadius:5, fontWeight:500, cursor:'pointer' }}
-          onMouseEnter={e=>e.currentTarget.style.background='var(--accent-soft)'}
-          onMouseLeave={e=>e.currentTarget.style.background='none'}>Copiar reunião</button>
+        <div style={{ marginLeft:'auto', display:'flex', gap:6, alignItems:'center' }}>
+          <button onClick={handleCopyMeeting} style={{ fontSize:11, color:'var(--accent)', background:'none', border:'none', padding:'4px 8px', borderRadius:5, fontWeight:500, cursor:'pointer' }}
+            onMouseEnter={e=>e.currentTarget.style.background='var(--accent-soft)'}
+            onMouseLeave={e=>e.currentTarget.style.background='none'}>Copiar reunião</button>
+          <button onClick={() => setShowNewTask(true)} style={{ display:'flex', alignItems:'center', gap:4, fontSize:11, color:'#fff', background:'var(--accent)', border:'none', padding:'5px 10px', borderRadius:5, fontWeight:500, cursor:'pointer' }}
+            onMouseEnter={e=>e.currentTarget.style.background='#163f77'}
+            onMouseLeave={e=>e.currentTarget.style.background='var(--accent)'}>
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Nova tarefa
+          </button>
+        </div>
       </div>
       <div style={{ borderRadius:8, border:'1px solid var(--border)', overflow:'hidden', background:'#fff' }}>
         <table style={{ width:'100%', borderCollapse:'collapse' }}>
           <colgroup><col/><col style={{width:110}}/><col style={{width:82}}/><col style={{width:115}}/><col style={{width:105}}/><col style={{width:72}}/></colgroup>
           <thead><tr><th style={th}>Tarefa</th><th style={th}>Responsável</th><th style={th}>Data</th><th style={th}>Prazo</th><th style={th}>Status</th><th style={th}></th></tr></thead>
-          <tbody>{visibleTasks.map(t => <TaskRow key={t.id} task={t} meeting={meeting} onUpdate={onUpdate} onToast={onToast}/>)}</tbody>
+          <tbody>
+            {visibleTasks.map(t => <TaskRow key={t.id} task={t} meeting={meeting} onUpdate={onUpdate} onToast={onToast}/>)}
+            {visibleTasks.length === 0 && (
+              <tr><td colSpan={6} style={{ padding:'20px 16px', textAlign:'center', color:'var(--text-muted)', fontSize:13 }}>
+                Nenhuma tarefa visível · <button onClick={() => setShowNewTask(true)} style={{ color:'var(--accent)', background:'none', border:'none', cursor:'pointer', fontSize:13, fontWeight:500 }}>+ Adicionar tarefa</button>
+              </td></tr>
+            )}
+          </tbody>
         </table>
       </div>
+      {showNewTask && (
+        <NewTaskModal
+          meeting={meeting}
+          onClose={() => setShowNewTask(false)}
+          onSave={onAdd}
+          onToast={onToast}
+        />
+      )}
     </div>
   )
 }
@@ -496,6 +651,10 @@ export default function App() {
 
   const updateTask = useCallback((id, patch) => {
     setTasks(prev => prev.map(t => t.id===id ? {...t,...patch} : t))
+  }, [])
+
+  const addTask = useCallback((newTask) => {
+    setTasks(prev => [...prev, newTask])
   }, [])
 
   const exportCSV = () => {
@@ -644,7 +803,7 @@ export default function App() {
                 <div>Carregando dados do Supabase...</div>
               </div>
             ) : (
-              meetings.map(m => <MeetingBlock key={m.id} meeting={m} tasks={tasks.filter(t=>t.meeting_id===m.id)} clientFilter={clientFilter} statusFilter={statusFilter} onUpdate={updateTask} onToast={showToast}/>)
+              meetings.map(m => <MeetingBlock key={m.id} meeting={m} tasks={tasks.filter(t=>t.meeting_id===m.id)} clientFilter={clientFilter} statusFilter={statusFilter} onUpdate={updateTask} onAdd={addTask} onToast={showToast}/>)
             )}
           </>}
 
