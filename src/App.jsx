@@ -131,14 +131,25 @@ function ReportView({ meetings, tasks, onToast }) {
 
   const getClientTasks = (clientKey) => {
     const result = { concluidas: [], andamento: [], pendentes: [] }
+    const sevenDaysAgo = new Date()
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
+
     meetings.forEach(m => {
       const isClient = m.team === clientKey || (m.has_cliente && tasks.some(t => t.meeting_id === m.id && t.cliente === clientKey))
       if (!isClient) return
       tasks.filter(t => t.meeting_id === m.id && t.status !== 'bloqueado').forEach(t => {
         if (m.has_cliente && t.cliente !== clientKey && m.team !== clientKey) return
-        if (t.status === 'concluido') result.concluidas.push(t)
-        else if (t.status === 'andamento') result.andamento.push(t)
-        else if (t.status === 'pendente') result.pendentes.push(t)
+        if (t.status === 'concluido') {
+          // Só inclui concluídas dos últimos 7 dias
+          const updatedAt = t.updated_at ? new Date(t.updated_at) : null
+          if (updatedAt && updatedAt >= sevenDaysAgo) {
+            result.concluidas.push(t)
+          }
+        } else if (t.status === 'andamento') {
+          result.andamento.push(t)
+        } else if (t.status === 'pendente') {
+          result.pendentes.push(t)
+        }
       })
     })
     return result
