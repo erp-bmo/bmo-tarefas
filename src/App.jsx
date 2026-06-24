@@ -144,79 +144,70 @@ function ReportView({ meetings, tasks, onToast }) {
     return result
   }
 
-  const generateReport = async (clientKey) => {
+  const generateReport = (clientKey) => {
     setGenerating(true)
     setSelectedClient(clientKey)
     setReportText('')
     setReportClient(clientKey)
 
-    const clientTasks = getClientTasks(clientKey)
-    const emoji = TEAM_EMOJIS[clientKey] || '🏥'
+    const ct = getClientTasks(clientKey)
+    const w = getWeekRange()
 
-    const prompt = `Você é um gerente de contas da BMO Gestão, consultoria de gestão de clínicas médicas. Gere um report semanal profissional para o cliente "${clientKey}" no formato abaixo.
+    // ── Seção 1: Atividades realizadas ──
+    let secRealizadas = ''
+    if (ct.concluidas.length > 0) {
+      secRealizadas = ct.concluidas.map(t => `• ${t.description};`).join('\n')
+    } else if (ct.andamento.length > 0) {
+      secRealizadas = `• Nenhuma atividade concluída na semana passada. As seguintes atividades estão em andamento:\n`
+        + ct.andamento.map(t => `  - ${t.description} _(${t.resp})_`).join('\n')
+    } else {
+      secRealizadas = '• Nenhuma atividade concluída na semana passada.'
+    }
 
-DADOS DAS TAREFAS:
+    // ── Seção 2: Atividades previstas ──
+    const previstas = [...ct.andamento, ...ct.pendentes]
+    let secPrevistas = ''
+    if (previstas.length > 0) {
+      secPrevistas = previstas.map(t => {
+        const prazo = t.prazo_fixed ? ` _(${t.prazo_fixed})_` : ''
+        const status = t.status === 'andamento' ? ' 🔄' : ''
+        return `• ${t.description}${prazo}${status};`
+      }).join('\n')
+    } else {
+      secPrevistas = '• Nenhuma atividade prevista no momento.'
+    }
 
-ATIVIDADES REALIZADAS (concluídas):
-${clientTasks.concluidas.length > 0 ? clientTasks.concluidas.map(t => `- ${t.description} (${t.resp})`).join('\n') : '- Nenhuma atividade concluída esta semana'}
+    // ── Seção 3: Alinhamentos ──
+    const comPrazo = [...ct.andamento, ...ct.pendentes].filter(t => t.prazo_fixed || t.prazo)
+    let secAlinhamentos = ''
+    if (comPrazo.length > 0) {
+      secAlinhamentos = comPrazo.map(t => {
+        const prazo = t.prazo_fixed || t.prazo || ''
+        return `- ${t.description} _(${prazo})_`
+      }).join('\n')
+    } else {
+      secAlinhamentos = `- Seguimos à disposição para quaisquer dúvidas ou alinhamentos necessários.`
+    }
 
-ATIVIDADES EM ANDAMENTO:
-${clientTasks.andamento.length > 0 ? clientTasks.andamento.map(t => `- ${t.description} (${t.resp})`).join('\n') : '- Nenhuma'}
-
-PRÓXIMOS PASSOS (pendentes):
-${clientTasks.pendentes.map(t => `- ${t.description} (${t.resp}${t.prazo_fixed ? ', prazo: ' + t.prazo_fixed : ''})`).join('\n')}
-
-SEMANA DE REFERÊNCIA: ${week.label}
-
-INSTRUÇÕES:
-- Use exatamente o formato abaixo, com os emojis e negritos em asterisco (formato WhatsApp)
-- Seção "✅ Atividades realizadas": liste as CONCLUÍDAS. Se não houver, mencione brevemente o que está em progresso
-- Seção "🚀 Atividades previstas": liste PENDENTES e EM ANDAMENTO como próximos passos desta semana
-- Seção "🗓️ Alinhamentos Importantes": mencione reuniões agendadas ou confirmações necessárias baseadas nas tarefas
-- Linguagem: cordial, profissional, em português brasileiro
-- NÃO invente informações, use apenas os dados fornecidos
-- NÃO inclua tarefas bloqueadas
-
-FORMATO OBRIGATÓRIO:
-Bom dia, pessoal! Tudo bem?
-Segue o nosso *report semanal*, com o resumo das atividades realizadas na semana passada e os próximos passos do projeto:
+    const report = `Bom dia, pessoal! Tudo bem?
+Segue o nosso *report semanal* referente à semana de ${w.label}, com o resumo das atividades realizadas e os próximos passos do projeto:
 
 *✅ Atividades realizadas – semana passada*
-[lista de atividades concluídas]
+${secRealizadas}
 
 *🚀 Atividades previstas – esta semana*
-[lista de próximos passos]
+${secPrevistas}
 
 *🗓️ Alinhamentos Importantes*
-[confirmações e avisos relevantes]
+${secAlinhamentos}
 
 Caso tenham qualquer dúvida, estaremos à disposição!`
 
-    try {
-      const response = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'anthropic-version': '2023-06-01',
-          'anthropic-dangerous-direct-browser-access': 'true',
-        },
-        body: JSON.stringify({
-          model: 'claude-sonnet-4-6',
-          max_tokens: 1000,
-          messages: [{ role: 'user', content: prompt }]
-        })
-      })
-      if (!response.ok) {
-        const errData = await response.json()
-        throw new Error(errData?.error?.message || 'Erro HTTP ' + response.status)
-      }
-      const data = await response.json()
-      const text = (data.content || []).filter(b => b.type === 'text').map(b => b.text).join('')
-      setReportText(text || 'Report sem conteúdo. Tente novamente.')
-    } catch (err) {
-      setReportText('Erro ao gerar report: ' + err.message)
-    }
-    setGenerating(false)
+    // Simula pequeno delay para UX
+    setTimeout(() => {
+      setReportText(report)
+      setGenerating(false)
+    }, 400)
   }
 
   const handleCopyReport = () => {
