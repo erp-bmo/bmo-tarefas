@@ -119,7 +119,43 @@ function ReportView({ meetings, tasks, onToast }) {
   const [generating, setGenerating] = useState(false)
   const [reportText, setReportText] = useState('')
   const [reportClient, setReportClient] = useState(null)
+  const [lastReport, setLastReport] = useState(null)
+  const [loadingLastReport, setLoadingLastReport] = useState(false)
+  const [showLastReport, setShowLastReport] = useState(false)
+  const [showAddReport, setShowAddReport] = useState(false)
+  const [newReportText, setNewReportText] = useState('')
+  const [savingReport, setSavingReport] = useState(false)
   const week = getWeekRange()
+
+  const loadLastReport = async (clientKey) => {
+    setLoadingLastReport(true)
+    const { data } = await supabase
+      .from('bmo_reports')
+      .select('*')
+      .eq('client', clientKey)
+      .order('created_at', { ascending: false })
+      .limit(1)
+    setLastReport(data?.[0] || null)
+    setLoadingLastReport(false)
+  }
+
+  const saveReport = async (clientKey) => {
+    if (!newReportText.trim()) { onToast('Cole o texto do report antes de salvar'); return }
+    setSavingReport(true)
+    const id = `report-${clientKey.toLowerCase().replace(/\s+/g,'-')}-${Date.now()}`
+    const { error } = await supabase.from('bmo_reports').insert({
+      id,
+      client: clientKey,
+      week_label: week.label,
+      report_text: newReportText.trim()
+    })
+    if (error) { onToast('Erro ao salvar report'); setSavingReport(false); return }
+    setLastReport({ id, client: clientKey, week_label: week.label, report_text: newReportText.trim() })
+    setNewReportText('')
+    setShowAddReport(false)
+    setSavingReport(false)
+    onToast('Report de referência salvo ✓')
+  }
 
   // Clientes que têm tarefas
   const clientsWithTasks = ALL_CLIENTS.filter(c => {
@@ -170,6 +206,9 @@ function ReportView({ meetings, tasks, onToast }) {
     setSelectedClient(clientKey)
     setReportText('')
     setReportClient(clientKey)
+    setShowLastReport(false)
+    setShowAddReport(false)
+    loadLastReport(clientKey)
 
     const ct = getClientTasks(clientKey)
     const w = getWeekRange()
@@ -296,13 +335,66 @@ Caso tenham qualquer dúvida, estaremos à disposição!`
 
         {reportText && !generating && (
           <div>
+            {/* ── Último report enviado ── */}
+            <div style={{ marginBottom: 16, background: '#fff', border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderBottom: showLastReport || showAddReport ? '1px solid var(--border)' : 'none' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)' }}>📌 Último report enviado</span>
+                  {lastReport && <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>semana {lastReport.week_label}</span>}
+                  {!lastReport && !loadingLastReport && <span style={{ fontSize: 11, color: 'var(--text-light)' }}>nenhum salvo ainda</span>}
+                  {loadingLastReport && <span style={{ fontSize: 11, color: 'var(--text-light)' }}>carregando...</span>}
+                </div>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  {lastReport && (
+                    <button onClick={() => { setShowLastReport(p => !p); setShowAddReport(false) }}
+                      style={{ fontSize: 11, padding: '4px 10px', borderRadius: 5, border: '1px solid var(--border)', background: showLastReport ? 'var(--accent-soft)' : '#fff', color: showLastReport ? 'var(--accent)' : 'var(--text-muted)', cursor: 'pointer', fontWeight: 500 }}>
+                      {showLastReport ? 'Fechar' : 'Ver report'}
+                    </button>
+                  )}
+                  <button onClick={() => { setShowAddReport(p => !p); setShowLastReport(false) }}
+                    style={{ fontSize: 11, padding: '4px 10px', borderRadius: 5, border: 'none', background: showAddReport ? 'var(--accent)' : 'var(--accent)', color: '#fff', cursor: 'pointer', fontWeight: 500 }}>
+                    {showAddReport ? 'Cancelar' : '+ Adicionar report'}
+                  </button>
+                </div>
+              </div>
+              {showLastReport && lastReport && (
+                <div style={{ padding: '14px 16px' }}>
+                  <div style={{ background: '#ECE5DD', borderRadius: 8, padding: 12 }}>
+                    <div style={{ background: '#fff', borderRadius: 8, padding: '10px 14px', fontSize: 12, lineHeight: 1.7, color: '#111', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                      {lastReport.report_text}
+                    </div>
+                  </div>
+                </div>
+              )}
+              {showAddReport && (
+                <div style={{ padding: '14px 16px' }}>
+                  <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 8 }}>Cole o texto do último report enviado para este cliente:</div>
+                  <textarea value={newReportText} onChange={e => setNewReportText(e.target.value)}
+                    placeholder="Cole aqui o report enviado no WhatsApp..."
+                    rows={8}
+                    style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid var(--border)', fontSize: 13, lineHeight: 1.6, fontFamily: 'var(--font)', color: 'var(--text)', resize: 'vertical' }}
+                    onFocus={e => e.target.style.borderColor = 'var(--accent)'}
+                    onBlur={e => e.target.style.borderColor = 'var(--border)'}
+                  />
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 10 }}>
+                    <button onClick={() => setShowAddReport(false)} style={{ padding: '7px 14px', borderRadius: 5, border: '1px solid var(--border-strong)', background: '#fff', fontSize: 13, cursor: 'pointer' }}>Cancelar</button>
+                    <button onClick={() => saveReport(reportClient)} disabled={savingReport}
+                      style={{ padding: '7px 14px', borderRadius: 5, border: 'none', background: 'var(--accent)', color: '#fff', fontSize: 13, fontWeight: 500, cursor: 'pointer', opacity: savingReport ? .7 : 1 }}>
+                      {savingReport ? 'Salvando...' : 'Salvar report de referência'}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* ── Header do novo report ── */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
               <div>
                 <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text)' }}>
-                  {TEAM_EMOJIS[reportClient] || '🏥'} Report — {reportClient}
+                  {TEAM_EMOJIS[reportClient] || '🏥'} Novo report — {reportClient}
                 </div>
                 <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
-                  Semana de referência: {week.label} · Gerado por IA · Revise antes de enviar
+                  Semana de referência: {week.label} · Revise antes de enviar
                 </div>
               </div>
               <div style={{ display: 'flex', gap: 8 }}>
