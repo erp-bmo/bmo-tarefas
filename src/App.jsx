@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase } from './supabase.js'
+import SopView from './SopView.jsx'
 
 // ─── Constants ───────────────────────────────────────────────
 const TEAM_COLORS = {
@@ -658,8 +659,8 @@ function MeetingBlock({ meeting, tasks, clientFilter, statusFilter, onUpdate, on
           <div style={{ fontSize:13, fontWeight:600 }}>{meeting.title}</div>
           <div style={{ fontSize:11, color:'var(--text-muted)' }}>
             {meeting.date_label}
-            <span style={{ marginLeft:6, fontSize:10, background:meeting.source==='gemini'?'#E8F0FE':'#E6F4EE', color:meeting.source==='gemini'?'#1A4D8F':'#1A6B4A', padding:'1px 6px', borderRadius:10, fontWeight:500 }}>
-              {meeting.source==='gemini'?'✦ Gemini':'● tl;dv'}
+            <span style={{ marginLeft:6, fontSize:10, background:meeting.source==='gemini'?'#E8F0FE':meeting.source==='sop'?'#EDE8FA':'#E6F4EE', color:meeting.source==='gemini'?'#1A4D8F':meeting.source==='sop'?'#5B3FA0':'#1A6B4A', padding:'1px 6px', borderRadius:10, fontWeight:500 }}>
+              {meeting.source==='gemini'?'✦ Gemini':meeting.source==='sop'?'🧭 SOP':'● tl;dv'}
             </span>
           </div>
         </div>
@@ -712,7 +713,7 @@ export default function App() {
   const [showCopy, setShowCopy] = useState(false)
   const [syncing, setSyncing] = useState(false)
   const [lastSync, setLastSync] = useState(null)
-  const [activeTab, setActiveTab] = useState('tarefas') // 'tarefas' | 'reports'
+  const [activeTab, setActiveTab] = useState('tarefas') // 'tarefas' | 'reports' | 'sop'
 
   const showToast = (msg) => setToast(msg)
 
@@ -811,6 +812,7 @@ export default function App() {
           <div style={{ display:'flex', gap:4, marginLeft:24, background:'var(--bg)', borderRadius:8, padding:4 }}>
             <button style={tabStyle('tarefas')} onClick={()=>setActiveTab('tarefas')}>📋 Tarefas</button>
             <button style={tabStyle('reports')} onClick={()=>setActiveTab('reports')}>📊 Reports</button>
+            <button style={tabStyle('sop')} onClick={()=>setActiveTab('sop')}>🧭 Processo SOP</button>
           </div>
         </div>
         <div style={{ display:'flex', gap:8, alignItems:'center' }}>
@@ -910,6 +912,10 @@ export default function App() {
               </div>
               <ReportView meetings={meetings} tasks={tasks} onToast={showToast}/>
             </div>
+          )}
+
+          {activeTab === 'sop' && (
+            <SopView clients={ALL_CLIENTS} meetings={meetings} tasks={tasks} onUpdateTask={updateTask} onReload={loadData} onToast={showToast}/>
           )}
         </main>
       </div>
