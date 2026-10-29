@@ -12,6 +12,9 @@ const TEAM_COLORS = {
   'Instituto K.D.': '#3949AB', 'Marina Alves': '#D84315', 'Mais Saúde': '#00838F',
   'Instituto Essencia': '#558B2F', 'Prevnner Clínica Médica': '#1A4D8F',
   'Gustavo Kobayashi': '#6D4C41',
+  'Amanda Quadrado Dermatologia': '#AD1457', 'Centro Oeste Serviços Médicos': '#00695C',
+  'Clínica Keola. Amanda Lino Teixeira': '#6A1B9A', 'Gabriella Amorim': '#C2185B', 'Clínica Regen': '#2E7D32',
+  'Rebeca Pinheiro': '#BF360C', 'Eliana Medeiros': '#8E24AA', 'Transformare': '#00897B', 'Instituto Humani': '#5D4037',
 }
 const TEAM_EMOJIS = {
   'Squad Palermo': '🏟️', 'Gerentes de Contas': '👥', 'Interno BMO': '🏢',
@@ -21,20 +24,25 @@ const TEAM_EMOJIS = {
   'Evidence': '🏥', 'Duo Una': '🏥', 'Leandro Barreto': '👨‍⚕️',
   'Instituto K.D.': '🏥', 'Marina Alves': '👩‍⚕️', 'Mais Saúde': '❤️',
   'Instituto Essencia': '🌿', 'Prevnner Clínica Médica': '🏥', 'Gustavo Kobayashi': '🦷',
+  'Amanda Quadrado Dermatologia': '✨', 'Centro Oeste Serviços Médicos': '🏥', 'Clínica Keola. Amanda Lino Teixeira': '🩺',
+  'Gabriella Amorim': '👩‍⚕️', 'Clínica Regen': '🌱', 'Rebeca Pinheiro': '👩‍⚕️', 'Eliana Medeiros': '👩‍⚕️',
+  'Transformare': '🔄', 'Instituto Humani': '🔬',
 }
 const STATUS_LABEL = { pendente: 'Pendente', andamento: 'Em andamento', concluido: 'Concluída', bloqueado: 'Bloqueada' }
 const STATUS_EMOJI = { pendente: '🔲', andamento: '🔄', concluido: '✅', bloqueado: '🚫' }
 
 const ALL_CLIENTS = [
-  { key: 'Clínica Rached', color: '#C0392B' }, { key: 'Clínica Suzuki', color: '#4A3FA0' },
-  { key: 'EndoDerma', color: '#1A6B4A' }, { key: 'Instituto Leonardo Junqueira', color: '#0B57D0' },
-  { key: 'Loureiro Clinic', color: '#6D4C41' }, { key: 'Luiz Felipe', color: '#00796B' },
-  { key: 'Clínica Calvet', color: '#8A5A00' }, { key: 'Injecta MedInfuse', color: '#1A4D8F' },
-  { key: 'Natalia Dyna', color: '#7B1FA2' }, { key: 'Evidence', color: '#1565C0' },
-  { key: 'Duo Una', color: '#2E7D32' }, { key: 'Leandro Barreto', color: '#8A2060' },
+  { key: 'EndoDerma', color: '#1A6B4A' }, { key: 'Amanda Quadrado Dermatologia', color: '#AD1457' },
+  { key: 'Centro Oeste Serviços Médicos', color: '#00695C' }, { key: 'Clínica Keola. Amanda Lino Teixeira', color: '#6A1B9A' },
+  { key: 'Gabriella Amorim', color: '#C2185B' }, { key: 'Natalia Dyna', color: '#7B1FA2' },
   { key: 'Instituto K.D.', color: '#3949AB' }, { key: 'Marina Alves', color: '#D84315' },
-  { key: 'Mais Saúde', color: '#00838F' }, { key: 'Instituto Essencia', color: '#558B2F' },
-  { key: 'Prevnner Clínica Médica', color: '#1A4D8F' }, { key: 'Gustavo Kobayashi', color: '#6D4C41' },
+  { key: 'Clínica Regen', color: '#2E7D32' }, { key: 'Injecta MedInfuse', color: '#1A4D8F' },
+  { key: 'Rebeca Pinheiro', color: '#BF360C' }, { key: 'Instituto Leonardo Junqueira', color: '#0B57D0' },
+  { key: 'Instituto Essencia', color: '#558B2F' }, { key: 'Eliana Medeiros', color: '#8E24AA' },
+  { key: 'Transformare', color: '#00897B' }, { key: 'Prevnner Clínica Médica', color: '#1565C0' },
+  { key: 'Instituto Humani', color: '#5D4037' }, { key: 'Mais Saúde', color: '#00838F' },
+  { key: 'Loureiro Clinic', color: '#6D4C41' }, { key: 'Clínica Suzuki', color: '#4A3FA0' },
+  { key: 'Duo Una', color: '#2E7D32' },
 ]
 
 // ─── Utils ────────────────────────────────────────────────────
