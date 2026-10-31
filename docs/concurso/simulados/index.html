@@ -1,0 +1,417 @@
+<title>Simulados FGV · ABDI</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Libre+Franklin:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+/* Layout: cadernos de prova à esquerda, cartão-resposta fixo à direita; abas Caderno / Gabarito no topo */
+:root{
+  --paper:#f3f5f8; --sheet:#ffffff; --ink:#18213a; --muted:#5d6782; --line:#d8dde8;
+  --accent:#2747c7; --accent-soft:#e3e8fb; --mark:#18213a;
+  --ok:#17824a; --ok-soft:#dcf2e5; --bad:#c2352b; --bad-soft:#fae1de; --warn:#a86a00; --warn-soft:#fbefd3;
+  --f-display:"Bricolage Grotesque",ui-sans-serif,system-ui,sans-serif;
+  --f-body:"Libre Franklin",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --paper:#11151f; --sheet:#1a2030; --ink:#e7eaf3; --muted:#9aa3bd; --line:#2d3550;
+  --accent:#8ea2ff; --accent-soft:#232d52; --mark:#e7eaf3;
+  --ok:#5fd394; --ok-soft:#163525; --bad:#ff8a7f; --bad-soft:#3d1c1a; --warn:#f2c060; --warn-soft:#3a2d10; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --paper:#11151f; --sheet:#1a2030; --ink:#e7eaf3; --muted:#9aa3bd; --line:#2d3550;
+  --accent:#8ea2ff; --accent-soft:#232d52; --mark:#e7eaf3;
+  --ok:#5fd394; --ok-soft:#163525; --bad:#ff8a7f; --bad-soft:#3d1c1a; --warn:#f2c060; --warn-soft:#3a2d10; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--paper);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.5}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--sheet)}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.wrap{max-width:1240px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+header.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--sheet);border-bottom:1px solid var(--line)}
+.top .wrap{display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding-block:12px}
+.brand{font-family:var(--f-display);font-weight:700;font-size:20px;letter-spacing:-.01em;margin-right:auto}
+.brand small{display:block;font-family:var(--f-body);font-weight:500;font-size:12px;color:var(--muted);letter-spacing:.02em}
+.tabs{display:flex;gap:4px;background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:3px}
+.tabs button{border:0;background:none;padding:7px 14px;border-radius:7px;font-weight:600;color:var(--muted)}
+.tabs button[aria-selected="true"]{background:var(--sheet);color:var(--ink);box-shadow:0 1px 2px rgb(0 0 0 / .12)}
+.store{font-size:12px;color:var(--muted)}
+main{padding-block:24px 64px}
+h1,h2,h3{font-family:var(--f-display);text-wrap:balance;letter-spacing:-.01em;margin:0}
+h1{font-size:28px} h2{font-size:21px} h3{font-size:17px}
+.lede{color:var(--muted);max-width:68ch;margin:6px 0 20px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px}
+.card{background:var(--sheet);border:1px solid var(--line);border-radius:12px;padding:18px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.meta{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:13px;color:var(--muted)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{font-size:12px;font-weight:600;padding:3px 9px;border-radius:999px;background:var(--paper);border:1px solid var(--line);white-space:nowrap}
+.status{font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:3px 9px;border-radius:6px;align-self:flex-start}
+.st-nova{background:var(--paper);color:var(--muted)} .st-andamento{background:var(--warn-soft);color:var(--warn)}
+.st-finalizada{background:var(--accent-soft);color:var(--accent)} .st-corrigida{background:var(--ok-soft);color:var(--ok)}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.btn{border:1px solid var(--line);background:var(--sheet);padding:8px 14px;border-radius:8px;font-weight:600}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--sheet)}
+.btn.danger{color:var(--bad);border-color:var(--bad)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.confirm{border:1px solid var(--warn);background:var(--warn-soft);border-radius:8px;padding:10px 12px;font-size:14px;display:flex;flex-direction:column;gap:8px}
+.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.progress{height:6px;background:var(--paper);border-radius:99px;overflow:hidden;border:1px solid var(--line)}
+.progress span{display:block;height:100%;background:var(--accent)}
+
+/* prova */
+.prova-head{display:flex;flex-wrap:wrap;gap:12px 20px;align-items:flex-end;margin-bottom:16px}
+.prova-head .titles{margin-right:auto;min-width:0}
+.clock{font-family:var(--f-mono);font-size:22px;font-weight:700}
+.clock small{display:block;font-family:var(--f-body);font-size:12px;font-weight:500;color:var(--muted)}
+.split{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:20px;align-items:start}
+.pages{display:flex;flex-direction:column;gap:14px;min-width:0}
+.page{background:#fff;border:1px solid var(--line);border-radius:6px;overflow:hidden;position:relative}
+.page canvas{display:block;width:100%;height:auto}
+.page .pnum{position:absolute;top:6px;right:8px;font:600 11px var(--f-mono);background:var(--sheet);color:var(--muted);padding:2px 6px;border-radius:4px;border:1px solid var(--line)}
+.loading{padding:40px;text-align:center;color:var(--muted);background:var(--sheet);border:1px dashed var(--line);border-radius:8px}
+.sheet{position:sticky;top:calc(env(safe-area-inset-top,0px) + 76px);background:var(--sheet);border:1px solid var(--line);border-radius:12px;padding:14px;max-height:calc(100vh - 100px);overflow:auto;display:flex;flex-direction:column;gap:14px}
+.sheet h3{font-size:15px}
+.block-title{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);display:flex;justify-content:space-between}
+.qrow{display:grid;grid-template-columns:36px repeat(5,1fr);gap:4px;align-items:center;padding:3px 0}
+.qn{font:700 13px var(--f-mono);border:0;background:none;text-align:left;color:var(--muted);padding:0}
+.qn:hover{color:var(--accent);text-decoration:underline}
+.bub{aspect-ratio:1;max-width:34px;width:100%;justify-self:center;border-radius:50%;border:1.5px solid var(--muted);background:var(--sheet);font:600 12px var(--f-mono);color:var(--muted);display:grid;place-items:center;padding:0}
+.bub:hover:not(:disabled){border-color:var(--accent);color:var(--accent)}
+.bub.on{background:var(--mark);border-color:var(--mark);color:var(--sheet)}
+.bub:disabled{cursor:default}
+.bub.right{background:var(--ok);border-color:var(--ok);color:var(--sheet)}
+.bub.wrong{background:var(--bad);border-color:var(--bad);color:var(--sheet)}
+.bub.key{border-color:var(--ok);color:var(--ok);border-width:2.5px}
+.qrow.res-ok .qn{color:var(--ok)} .qrow.res-bad .qn{color:var(--bad)}
+.mtoggle{display:none}
+@media (max-width:860px){
+  .split{grid-template-columns:minmax(0,1fr)}
+  .sheet{position:static;max-height:none}
+  .mtoggle{display:flex;margin-bottom:12px}
+  .split[data-view="caderno"] .sheet{display:none}
+  .split[data-view="cartao"] .pages{display:none}
+}
+
+/* gabarito */
+.keygrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(52px,1fr));gap:4px}
+.keycell{border:1px solid var(--line);border-radius:6px;padding:3px 0;text-align:center;font:600 12px var(--f-mono)}
+.keycell b{display:block;font-size:14px}
+.keycell.ok{background:var(--ok-soft);border-color:var(--ok)} .keycell.bad{background:var(--bad-soft);border-color:var(--bad)} .keycell.blank{background:var(--warn-soft);border-color:var(--warn)}
+.blur{filter:blur(6px);user-select:none;pointer-events:none}
+.score{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px}
+.sc{border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--paper)}
+.sc .big{font:700 22px var(--f-mono)}
+.sc .lbl{font-size:12px;color:var(--muted)}
+.sc.pass{border-color:var(--ok)} .sc.fail{border-color:var(--bad)}
+.tbl{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+th{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+td.r{color:var(--ok);font-weight:700} td.w{color:var(--bad);font-weight:700} td.b{color:var(--warn);font-weight:700}
+.review{font-size:14px;background:var(--paper);border-radius:8px;padding:10px 12px}
+.review ul{margin:6px 0 0;padding-left:18px}
+details summary{cursor:pointer;font-weight:600}
+.note{font-size:12px;color:var(--muted)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<header class="top"><div class="wrap">
+  <div class="brand">Simulados FGV<small>ABDI 2026 · API Produtividade Industrial · Conhecimentos Gerais</small></div>
+  <div class="tabs" role="tablist">
+    <button role="tab" id="tab-caderno" aria-selected="true">Caderno de provas</button>
+    <button role="tab" id="tab-gabarito" aria-selected="false">Gabarito</button>
+  </div>
+  <span class="store" id="store">Carregando respostas…</span>
+</div></header>
+
+<main class="wrap" id="app"></main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js"></script>
+<script>
+/* ---------- dados das provas ---------- */
+const SESS = {
+  S1:"S1 · Interpretação e coesão", S2:"S2 · Conectores e tempos verbais", S3:"S3 · Concordância, regência, crase e morfossintaxe",
+  S5:"S5 · Pontuação, colocação e reescrita", R2:"S2 · Proposições e tabelas-verdade", R3:"S3 · Equivalências e negações",
+  R4:"S4 · Argumentação e problemas", I7a:"S7 · Office, Windows e navegador", I7b:"S7 · Segurança, nuvem, IA e leis"
+};
+const META = {"Língua Portuguesa":.75,"Raciocínio Lógico":.60,"Informática":.85};
+function keyStr(s){const o={};s.trim().split(/\s+/).forEach(t=>{o[+t.slice(0,-1)]=t.slice(-1)});return o}
+function sess(map){const o={};for(const[k,qs]of Object.entries(map))qs.forEach(q=>o[q]=k);return o}
+const R=(a,b)=>Array.from({length:b-a+1},(_,i)=>a+i);
+const PROVAS = [
+ {id:"agsus",nome:"AgSUS",cargo:"Analista de Gestão · Administrativo",tipo:"Serviço social autônomo",data:"12/10/2025",pdf:"provas/agsus.pdf",gab:"definitivo",
+  pages:[3,4,5,6,8,9],
+  blocos:[["Língua Portuguesa",1,15],["Raciocínio Lógico",16,23],["Informática",31,40]],
+  qpage:{1:3,2:3,3:3,4:3,5:3,6:3,7:3,8:3,9:4,10:4,11:4,12:4,13:4,14:4,15:4,16:5,17:5,18:5,19:5,20:5,21:5,22:5,23:6,31:8,32:8,33:8,34:8,35:8,36:8,37:8,38:8,39:9,40:9},
+  key:keyStr("1B 2E 3A 4C 5D 6C 7E 8A 9C 10A 11D 12A 13B 14B 15E 16A 17D 18C 19E 20B 21E 22E 23C 31E 32A 33A 34B 35E 36B 37B 38E 39B 40C"),
+  sess:sess({S1:[1,2,3,8,9,10,12,13,14],S2:[5,15],S3:[6,7],S5:[4,11],R3:[22],R4:[16,17,18,19,20,21,23],I7a:[31,32,33,35,36,37,38,40],I7b:[34,39]})},
+ {id:"nav",nome:"NAV Brasil",cargo:"Analista de Gestão",tipo:"Empresa pública federal",data:"02/08/2026",pdf:"provas/nav.pdf",gab:"definitivo retificado",
+  pages:[3,4,5,6,7,8],
+  blocos:[["Língua Portuguesa",1,20],["Raciocínio Lógico",21,28],["Informática",29,33]],
+  qpage:{1:3,2:3,3:3,4:3,5:3,6:4,7:4,8:4,9:4,10:4,11:4,12:4,13:5,14:5,15:5,16:5,17:5,18:5,19:5,20:5,21:6,22:6,23:6,24:6,25:6,26:6,27:6,28:7,29:7,30:7,31:7,32:8,33:8},
+  key:keyStr("1B 2E 3B 4A 5E 6A 7C 8D 9A 10E 11C 12E 13A 14C 15A 16C 17D 18B 19A 20C 21A 22D 23B 24E 25E 26C 27B 28A 29B 30E 31A 32C 33C"),
+  sess:sess({S1:[1,2,4,8,9,10,11,15,16,17,19],S2:[14],S3:[5,6,7,18],S5:[3,12,13,20],R3:[22],R4:[21,23,24,25,26,27,28],I7a:[29,32],I7b:[30,31,33]})},
+ {id:"dataprev",nome:"DATAPREV",cargo:"Analista de TI · Administração e Governança",tipo:"Empresa pública federal",data:"11/10/2026",pdf:"provas/dataprev.pdf",gab:"preliminar",
+  pages:[2,3,6,7,8,9,10],
+  blocos:[["Língua Portuguesa",1,12],["Raciocínio Lógico",25,29],["Informática",33,40]],
+  infoNote:"IA (33–35) e legislação de segurança da informação (36–40). Inglês e Atualidades ficam de fora.",
+  qpage:{1:2,2:2,3:2,4:2,5:2,6:3,7:3,8:3,9:3,10:3,11:3,12:3,25:6,26:6,27:6,28:6,29:6,33:7,34:7,35:8,36:8,37:9,38:9,39:10,40:10},
+  key:keyStr("1B 2B 3D 4B 5A 6B 7C 8B 9C 10A 11B 12A 25B 26C 27C 28A 29E 33B 34D 35C 36D 37E 38D 39C 40B"),
+  sess:sess({S1:[1,2,3,4,6,7,9,11],S2:[10],S3:[5],S5:[8,12],R2:[25,28],R3:[29],R4:[26,27],I7b:R(33,40)})},
+ {id:"cprm",nome:"CPRM / SGB",cargo:"Analista em Geociências · Administração",tipo:"Empresa pública federal",data:"30/11/2025",pdf:"provas/cprm.pdf",gab:"definitivo",
+  pages:[3,4,5,6],
+  blocos:[["Língua Portuguesa",1,10],["Raciocínio Lógico",11,20]],
+  qpage:{1:3,2:3,3:3,4:3,5:3,6:3,7:4,8:4,9:4,10:4,11:4,12:4,13:4,14:5,15:5,16:5,17:5,18:5,19:5,20:6},
+  key:keyStr("1B 2C 3B 4D 5C 6D 7A 8A 9B 10C 11B 12C 13E 14D 15C 16B 17D 18A 19A 20A"),
+  sess:sess({S1:[1,6,7],S2:[9],S3:[2,3,4,10],S5:[5,8],R2:[11],R3:[19],R4:[12,13,14,15,16,17,18,20]})},
+ {id:"agesan",nome:"AGESAN-RS",cargo:"Agente Administrativo (nível superior)",tipo:"Agência reguladora",data:"2025",pdf:"provas/agesan.pdf",gab:"definitivo",
+  pages:[3,4,5,6,8,9],
+  blocos:[["Língua Portuguesa",1,15],["Raciocínio Lógico",16,20],["Informática",31,35]],
+  qpage:{1:3,2:3,3:3,4:3,5:3,6:4,7:4,8:4,9:4,10:4,11:4,12:4,13:5,14:5,15:5,16:5,17:5,18:5,19:5,20:6,31:8,32:8,33:8,34:9,35:9},
+  key:keyStr("1A 2E 3A 4E 5A 6B 7C 8C 9A 10E 11C 12B 13D 14C 15D 16A 17C 18D 19E 20B 31E 32B 33B 34E 35C"),
+  sess:sess({S1:[5,9,10,11,12,13,14],S3:[1,2,3,7,15],S5:[4,6,8],R4:[16,17,18,19,20],I7a:[31,32,35],I7b:[33,34]})}
+];
+PROVAS.forEach(p=>{p.qs=p.blocos.flatMap(([d,a,b])=>R(a,b).map(q=>({q,d})));p.total=p.qs.length});
+const MIN_POR_QUESTAO = 3.5; // 60 questões em 3h30 na ABDI
+
+/* ---------- armazenamento: conta (db) ou este navegador ---------- */
+const LS="simulados-abdi-v1";
+const store={mode:"local",col:null,data:{},
+  async init(){
+    try{const all=JSON.parse(localStorage.getItem(LS)||"{}");this.data=all}catch(e){this.data={}}
+    const timeout=new Promise(r=>setTimeout(()=>r(null),10000));
+    try{
+      const pair=await Promise.race([Promise.all([claude.use("db"),claude.use("user")]),timeout]);
+      if(pair&&pair[0]&&pair[1]){
+        const id=await pair[1].id();
+        if(id){
+          this.col=pair[0].collection("data/users/"+id+"/simulados");
+          const snap=await Promise.race([this.col.get(),timeout]);
+          if(snap){snap.docs.forEach(d=>{const v=d.data();if(v)this.data[d.id]=v});this.mode="db"}
+          else this.col=null;
+        }
+      }
+    }catch(e){this.col=null}
+    document.getElementById("store").textContent=this.mode==="db"?"Respostas salvas na sua conta":"Respostas salvas neste navegador";
+  },
+  get(id){return this.data[id]||{status:"nova",answers:{}}},
+  timers:{},
+  put(id,st){
+    this.data[id]=st;
+    try{localStorage.setItem(LS,JSON.stringify(this.data))}catch(e){}
+    if(this.col){clearTimeout(this.timers[id]);this.timers[id]=setTimeout(()=>{
+      this.col.doc(id).set(JSON.parse(JSON.stringify(st))).catch(()=>{document.getElementById("store").textContent="Falha ao salvar na conta · cópia neste navegador"})
+    },500)}
+  }
+};
+
+/* ---------- utilidades ---------- */
+const $=(s,r=document)=>r.querySelector(s);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const fmt=ms=>{ms=Math.max(0,ms|0);const s=Math.floor(ms/1000),h=Math.floor(s/3600),m=Math.floor(s%3600/60),x=s%60;return (h?h+":":"")+String(m).padStart(2,"0")+":"+String(x).padStart(2,"0")};
+const pct=x=>Math.round(x*100)+"%";
+function statusOf(st){return st.corrected?"corrigida":st.status}
+const LABEL={nova:"Não iniciada",andamento:"Em andamento",finalizada:"Finalizada",corrigida:"Corrigida"};
+function answered(p,st){return p.qs.filter(o=>st.answers[o.q]).length}
+function grade(p,st){
+  const by={};let ok=0;
+  const rows=p.qs.map(({q,d})=>{const a=st.answers[q]||"",k=p.key[q],r=!a?"b":(a===k?"r":"w");if(r==="r")ok++;
+    (by[d]=by[d]||{ok:0,n:0}).n++;if(r==="r")by[d].ok++;return {q,d,a,k,r,s:p.sess[q]}});
+  return {ok,n:p.total,by,rows};
+}
+
+/* ---------- roteamento ---------- */
+let view={tab:"caderno",prova:null};
+function route(){
+  const h=location.hash.slice(1);
+  if(h==="gabarito")view={tab:"gabarito",prova:null};
+  else if(h.startsWith("prova-")&&PROVAS.some(p=>p.id===h.slice(6)))view={tab:"caderno",prova:h.slice(6)};
+  else view={tab:"caderno",prova:null};
+  render();
+}
+function go(h){if(location.hash.slice(1)===h)route();else location.hash=h}
+$("#tab-caderno").onclick=()=>go("caderno");
+$("#tab-gabarito").onclick=()=>go("gabarito");
+addEventListener("hashchange",route);
+
+let tick=null;
+function render(){
+  clearInterval(tick);
+  $("#tab-caderno").setAttribute("aria-selected",view.tab==="caderno");
+  $("#tab-gabarito").setAttribute("aria-selected",view.tab==="gabarito");
+  if(view.tab==="gabarito")renderGabarito();
+  else if(view.prova)renderProva(PROVAS.find(p=>p.id===view.prova));
+  else renderLista();
+  if(!view.prova)scrollTo(0,0);
+}
+
+/* ---------- aba Caderno: lista ---------- */
+function renderLista(){
+  $("#app").innerHTML=`<h1>Caderno de provas</h1>
+  <p class="lede">Cinco provas oficiais da FGV com o caderno Tipo 1. Cada simulado traz só as questões de Português, Raciocínio Lógico e Informática. Abra uma prova, marque as respostas no cartão e finalize. A correção fica na aba Gabarito.</p>
+  <div class="grid">${PROVAS.map(p=>{const st=store.get(p.id),s=statusOf(st),n=answered(p,st);
+    const g=st.corrected?grade(p,st):null;
+    return `<article class="card">
+      <span class="status st-${s}">${LABEL[s]}</span>
+      <div><h2>${esc(p.nome)}</h2><div class="meta"><span>${esc(p.cargo)}</span></div></div>
+      <div class="meta"><span>${esc(p.tipo)}</span><span>Prova de ${p.data}</span><span class="mono">${p.total} questões · ~${Math.round(p.total*MIN_POR_QUESTAO)} min</span></div>
+      <div class="chips">${p.blocos.map(([d,a,b])=>`<span class="chip">${d} <span class="mono">${a}–${b}</span></span>`).join("")}</div>
+      <div><div class="progress"><span style="width:${n/p.total*100}%"></span></div>
+      <div class="note mono">${n}/${p.total} marcadas${g?` · ${g.ok} acertos (${pct(g.ok/g.n)})`:""}</div></div>
+      <div class="row"><button class="btn primary" data-open="${p.id}">${s==="nova"?"Iniciar prova":s==="andamento"?"Continuar prova":"Rever caderno"}</button>
+      ${s!=="nova"?`<button class="btn" data-gab="${p.id}">Ver gabarito</button>`:""}</div>
+    </article>`}).join("")}</div>`;
+  $("#app").querySelectorAll("[data-open]").forEach(b=>b.onclick=()=>go("prova-"+b.dataset.open));
+  $("#app").querySelectorAll("[data-gab]").forEach(b=>b.onclick=()=>{go("gabarito");setTimeout(()=>document.getElementById("g-"+b.dataset.gab)?.scrollIntoView(),50)});
+}
+
+/* ---------- aba Caderno: prova aberta ---------- */
+let pdfCache={};
+function renderProva(p){
+  let st=store.get(p.id);
+  if(st.status==="nova"){st={...st,status:"andamento",startedAt:Date.now(),answers:{}};store.put(p.id,st)}
+  const locked=st.status!=="andamento", showRes=!!st.corrected;
+  const g=showRes?grade(p,st):null;
+  $("#app").innerHTML=`
+  <div class="prova-head">
+    <div class="titles"><button class="btn" id="back">← Todas as provas</button>
+      <h1 style="margin-top:10px">${esc(p.nome)} <span style="font-weight:600;color:var(--muted);font-size:18px">· ${esc(p.cargo)}</span></h1>
+      <div class="meta"><span>${esc(p.tipo)}</span><span>Prova de ${p.data}</span><span>Caderno Tipo 1</span><a href="${p.pdf}" target="_blank" rel="noopener">Abrir PDF em nova aba</a></div></div>
+    <div class="clock" id="clock">00:00<small>tempo sugerido ${Math.round(p.total*MIN_POR_QUESTAO)} min</small></div>
+  </div>
+  ${locked?`<div class="review" style="margin-bottom:14px">${showRes?`Prova corrigida: <b class="mono">${g.ok}/${g.n}</b> acertos. No cartão, verde é acerto, vermelho é erro e o contorno verde mostra a resposta certa.`:`Prova finalizada. Vá à aba Gabarito e use "Corrigir prova" para ver o resultado.`}</div>`:""}
+  <div class="tabs mtoggle" role="tablist"><button id="mv-c" aria-selected="true">Caderno</button><button id="mv-a" aria-selected="false">Cartão-resposta</button></div>
+  <div class="split" data-view="caderno" id="split">
+    <div class="pages" id="pages"><div class="loading">Carregando o caderno…</div></div>
+    <aside class="sheet" aria-label="Cartão-resposta">
+      <div class="row" style="justify-content:space-between"><h3>Cartão-resposta</h3><span class="mono note" id="count"></span></div>
+      ${p.infoNote?`<p class="note" style="margin:0">${esc(p.infoNote)}</p>`:""}
+      ${p.blocos.map(([d,a,b])=>`<div><div class="block-title"><span>${d}</span><span class="mono">${a}–${b}</span></div>
+        ${R(a,b).map(q=>{const ans=st.answers[q],k=p.key[q];
+          const rc=showRes?(!ans?"":ans===k?"res-ok":"res-bad"):"";
+          return `<div class="qrow ${rc}"><button class="qn" data-jump="${q}" title="Ir para a questão ${q} no caderno">${String(q).padStart(2,"0")}</button>${"ABCDE".split("").map(L=>{
+            let c="";if(ans===L)c=showRes?(L===k?"right":"wrong"):"on";else if(showRes&&L===k)c="key";
+            return `<button class="bub ${c}" data-q="${q}" data-l="${L}" aria-label="Questão ${q}, alternativa ${L}" aria-pressed="${ans===L}" ${locked?"disabled":""}>${L}</button>`}).join("")}</div>`}).join("")}</div>`).join("")}
+      <div id="actions"></div>
+    </aside>
+  </div>`;
+  $("#back").onclick=()=>go("caderno");
+  const split=$("#split");
+  $("#mv-c").onclick=()=>{split.dataset.view="caderno";$("#mv-c").setAttribute("aria-selected",true);$("#mv-a").setAttribute("aria-selected",false)};
+  $("#mv-a").onclick=()=>{split.dataset.view="cartao";$("#mv-a").setAttribute("aria-selected",true);$("#mv-c").setAttribute("aria-selected",false)};
+  const upd=()=>{$("#count").textContent=answered(p,st)+"/"+p.total};upd();
+  const clock=()=>{const end=st.finishedAt||Date.now();$("#clock").firstChild.textContent=fmt(end-(st.startedAt||end))};clock();
+  if(!locked)tick=setInterval(clock,1000);
+  $("#app").querySelectorAll(".bub").forEach(b=>b.onclick=()=>{
+    const q=+b.dataset.q,L=b.dataset.l;
+    st={...st,answers:{...st.answers}};
+    if(st.answers[q]===L)delete st.answers[q];else st.answers[q]=L;
+    store.put(p.id,st);
+    b.parentElement.querySelectorAll(".bub").forEach(x=>{const on=st.answers[q]===x.dataset.l;x.classList.toggle("on",on);x.setAttribute("aria-pressed",on)});
+    upd();
+  });
+  $("#app").querySelectorAll("[data-jump]").forEach(b=>b.onclick=()=>{
+    const pg=p.qpage[b.dataset.jump];split.dataset.view="caderno";$("#mv-c").click();
+    document.getElementById("pg-"+pg)?.scrollIntoView({behavior:"smooth",block:"start"});
+  });
+  const actions=$("#actions");
+  const drawActions=()=>{
+    if(locked){actions.innerHTML=`<button class="btn primary" id="toGab" style="width:100%">${showRes?"Ver correção no Gabarito":"Ir para o Gabarito"}</button>`;$("#toGab").onclick=()=>{go("gabarito");setTimeout(()=>document.getElementById("g-"+p.id)?.scrollIntoView(),50)};return}
+    actions.innerHTML=`<button class="btn primary" id="fin" style="width:100%">Finalizar prova</button>`;
+    $("#fin").onclick=()=>{const falt=p.total-answered(p,st);
+      actions.innerHTML=`<div class="confirm"><span>${falt?`Faltam <b>${falt}</b> questões em branco. `:""}Depois de finalizar, as respostas ficam travadas.</span>
+      <div class="row"><button class="btn primary" id="yes">Finalizar</button><button class="btn" id="no">Continuar respondendo</button></div></div>`;
+      $("#no").onclick=drawActions;
+      $("#yes").onclick=()=>{st={...st,status:"finalizada",finishedAt:Date.now()};store.put(p.id,st);render()};
+    };
+  };drawActions();
+  drawPdf(p);
+}
+async function drawPdf(p){
+  const box=$("#pages");
+  if(typeof pdfjsLib==="undefined"){box.innerHTML=`<div class="loading">Não foi possível exibir o caderno aqui. <a href="${p.pdf}" target="_blank" rel="noopener">Abra o PDF em nova aba</a> e use o cartão-resposta ao lado.</div>`;return}
+  try{
+    const doc=pdfCache[p.id]||(pdfCache[p.id]=await pdfjsLib.getDocument({url:p.pdf}).promise);
+    if(view.prova!==p.id)return;
+    box.innerHTML="";
+    const w=Math.min(box.clientWidth||800,900),dpr=Math.min(devicePixelRatio||1,2);
+    for(const n of p.pages){
+      if(view.prova!==p.id)return;
+      const page=await doc.getPage(n),vp0=page.getViewport({scale:1}),scale=w/vp0.width*dpr,vp=page.getViewport({scale});
+      const div=document.createElement("div");div.className="page";div.id="pg-"+n;
+      const c=document.createElement("canvas");c.width=vp.width;c.height=vp.height;c.setAttribute("aria-label","Página "+n+" do caderno");
+      div.append(c);const s=document.createElement("span");s.className="pnum";s.textContent="pág. "+n;div.append(s);box.append(div);
+      await page.render({canvasContext:c.getContext("2d"),viewport:vp}).promise;
+    }
+  }catch(e){box.innerHTML=`<div class="loading">O caderno não carregou. <a href="${p.pdf}" target="_blank" rel="noopener">Abra o PDF em nova aba</a> e use o cartão-resposta ao lado.</div>`}
+}
+
+/* ---------- aba Gabarito ---------- */
+const reveal={};
+function renderGabarito(){
+  $("#app").innerHTML=`<h1>Gabarito</h1>
+  <p class="lede">Gabarito oficial da FGV para o caderno Tipo 1 de cada prova. Use "Corrigir prova" para conferir as suas marcações. Cada prova é corrigida separadamente, e o gabarito fica desfocado até a prova ser finalizada.</p>
+  <div style="display:flex;flex-direction:column;gap:16px">${PROVAS.map(cardGab).join("")}</div>`;
+  PROVAS.forEach(bindGab);
+}
+function cardGab(p){
+  const st=store.get(p.id),s=statusOf(st),open=st.status==="finalizada"||reveal[p.id];
+  const g=st.corrected?grade(p,st):null;
+  return `<article class="card" id="g-${p.id}">
+    <div class="row" style="justify-content:space-between;align-items:flex-start">
+      <div style="min-width:0"><h2>${esc(p.nome)}</h2><div class="meta"><span>${esc(p.cargo)}</span><span>Gabarito ${p.gab}</span><span class="mono">${answered(p,st)}/${p.total} marcadas</span></div></div>
+      <span class="status st-${s}">${LABEL[s]}</span></div>
+    ${p.gab==="preliminar"?`<p class="note" style="margin:0">O gabarito desta prova ainda é preliminar e pode mudar depois dos recursos.</p>`:""}
+    ${p.blocos.map(([d,a,b])=>`<div><div class="block-title" style="margin-bottom:6px"><span>${d}</span><span class="mono">${a}–${b}</span></div>
+      <div class="keygrid ${open?"":"blur"}">${R(a,b).map(q=>{let c="";if(g){const r=g.rows.find(x=>x.q===q).r;c=r==="r"?"ok":r==="w"?"bad":"blank"}
+        return `<div class="keycell ${c}">${q}<b>${p.key[q]}</b></div>`}).join("")}</div></div>`).join("")}
+    <div class="row" id="act-${p.id}">
+      <button class="btn primary" data-fix="${p.id}" ${s==="nova"?"disabled":""}>${st.corrected?"Corrigir prova de novo":"Corrigir prova"}</button>
+      ${!open?`<button class="btn" data-rev="${p.id}">Mostrar gabarito</button>`:""}
+      ${s!=="nova"?`<button class="btn" data-see="${p.id}">Abrir caderno</button><button class="btn danger" data-reset="${p.id}">Refazer do zero</button>`:""}
+    </div>
+    ${s==="nova"?`<p class="note" style="margin:0">Faça a prova na aba Caderno de provas para liberar a correção.</p>`:""}
+    <div id="res-${p.id}">${g?resultado(p,g):""}</div>
+  </article>`;
+}
+function resultado(p,g){
+  const blocks=Object.entries(g.by);
+  const errs=g.rows.filter(r=>r.r!=="r"),bySess={};
+  errs.forEach(r=>{(bySess[r.s]=bySess[r.s]||[]).push(r.q)});
+  return `<div class="score">
+    <div class="sc ${g.ok/g.n>=.7?"pass":"fail"}"><div class="big">${g.ok}/${g.n}</div><div class="lbl">Total · ${pct(g.ok/g.n)}</div></div>
+    ${blocks.map(([d,v])=>{const m=META[d],ok=v.ok/v.n>=m;return `<div class="sc ${ok?"pass":"fail"}"><div class="big">${v.ok}/${v.n}</div><div class="lbl">${d} · ${pct(v.ok/v.n)} (meta ${pct(m)})</div></div>`}).join("")}
+  </div>
+  ${errs.length?`<div class="review"><b>Revisar no plano de estudos</b><ul>${Object.entries(bySess).map(([s,qs])=>`<li>${esc(SESS[s]||s)}: questões <span class="mono">${qs.join(", ")}</span></li>`).join("")}</ul></div>`:`<div class="review"><b>Gabaritou.</b> Nenhum erro nem questão em branco.</div>`}
+  <details><summary>Questão a questão</summary><div class="tbl"><table>
+    <thead><tr><th>Questão</th><th>Disciplina</th><th>Sua resposta</th><th>Gabarito</th><th>Resultado</th><th>Sessão do manual</th></tr></thead>
+    <tbody>${g.rows.map(r=>`<tr><td class="mono">${r.q}</td><td>${r.d}</td><td class="mono">${r.a||"—"}</td><td class="mono">${r.k}</td><td class="${r.r}">${r.r==="r"?"Acerto":r.r==="w"?"Erro":"Em branco"}</td><td>${esc(SESS[r.s]||"")}</td></tr>`).join("")}</tbody>
+  </table></div></details>`;
+}
+function bindGab(p){
+  const card=document.getElementById("g-"+p.id),act=$("#act-"+p.id);
+  const redraw=()=>{card.outerHTML=cardGab(p);bindGab(p)};
+  card.querySelector("[data-rev]")?.addEventListener("click",()=>{reveal[p.id]=true;redraw()});
+  card.querySelector("[data-see]")?.addEventListener("click",()=>go("prova-"+p.id));
+  card.querySelector("[data-fix]")?.addEventListener("click",()=>{
+    let st=store.get(p.id);
+    const doFix=()=>{st={...store.get(p.id)};if(st.status==="andamento"){st.status="finalizada";st.finishedAt=Date.now()}
+      st.corrected=true;st.correctedAt=Date.now();store.put(p.id,st);redraw();
+      document.getElementById("res-"+p.id)?.scrollIntoView({behavior:"smooth",block:"nearest"})};
+    if(st.status==="andamento"){
+      act.innerHTML=`<div class="confirm" style="width:100%"><span>A prova ainda está em andamento (${answered(p,st)}/${p.total} marcadas). Corrigir agora encerra a prova e trava as respostas.</span>
+      <div class="row"><button class="btn primary" data-y>Encerrar e corrigir</button><button class="btn" data-n>Cancelar</button></div></div>`;
+      act.querySelector("[data-y]").onclick=doFix;act.querySelector("[data-n]").onclick=redraw;
+    }else doFix();
+  });
+  card.querySelector("[data-reset]")?.addEventListener("click",()=>{
+    act.innerHTML=`<div class="confirm" style="width:100%"><span>Apagar as respostas e a correção desta prova para fazer de novo?</span>
+    <div class="row"><button class="btn danger" data-y>Apagar e refazer</button><button class="btn" data-n>Cancelar</button></div></div>`;
+    act.querySelector("[data-y]").onclick=()=>{store.put(p.id,{status:"nova",answers:{}});delete reveal[p.id];redraw()};
+    act.querySelector("[data-n]").onclick=redraw;
+  });
+}
+
+/* ---------- início ---------- */
+renderLista();
+store.init().then(route);
+</script>
