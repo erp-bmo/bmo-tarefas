@@ -295,6 +295,8 @@ function renderProva(p){
     </aside>
   </div>`;
   $("#back").onclick=()=>go("caderno");
+  if(window.PDF_DATA&&window.PDF_DATA[p.id]){try{const a=$(".prova-head a[target]");
+    a.href=URL.createObjectURL(new Blob([Uint8Array.from(atob(window.PDF_DATA[p.id]),c=>c.charCodeAt(0))],{type:"application/pdf"}))}catch(e){}}
   const split=$("#split");
   $("#mv-c").onclick=()=>{split.dataset.view="caderno";$("#mv-c").setAttribute("aria-selected",true);$("#mv-a").setAttribute("aria-selected",false)};
   $("#mv-a").onclick=()=>{split.dataset.view="cartao";$("#mv-a").setAttribute("aria-selected",true);$("#mv-c").setAttribute("aria-selected",false)};
@@ -330,7 +332,9 @@ async function drawPdf(p){
   const box=$("#pages");
   if(typeof pdfjsLib==="undefined"){box.innerHTML=`<div class="loading">Não foi possível exibir o caderno aqui. <a href="${p.pdf}" target="_blank" rel="noopener">Abra o PDF em nova aba</a> e use o cartão-resposta ao lado.</div>`;return}
   try{
-    const doc=pdfCache[p.id]||(pdfCache[p.id]=await pdfjsLib.getDocument({url:p.pdf}).promise);
+    const emb=window.PDF_DATA&&window.PDF_DATA[p.id];
+    const src=emb?{data:Uint8Array.from(atob(emb),c=>c.charCodeAt(0))}:{url:p.pdf};
+    const doc=pdfCache[p.id]||(pdfCache[p.id]=await pdfjsLib.getDocument(src).promise);
     if(view.prova!==p.id)return;
     box.innerHTML="";
     const w=Math.min(box.clientWidth||800,900),dpr=Math.min(devicePixelRatio||1,2);
