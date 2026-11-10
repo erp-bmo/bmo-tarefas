@@ -81,34 +81,38 @@ on conflict (id) do update set versao = excluded.versao, etapa_num = excluded.et
   prazo_padrao = excluded.prazo_padrao, prioridade = excluded.prioridade, gate = excluded.gate,
   skill_vinculada = excluded.skill_vinculada, sem_ini = excluded.sem_ini, sem_fim = excluded.sem_fim, pop = excluded.pop, ativo = true;
 
--- 21 clientes da carteira atual (segmento a definir com o Squad) + 6 que saíram da carteira, como Churn,
+-- 21 clientes da carteira atual + 6 que saíram da carteira, como Churn.
+-- Segmento: fase registrada em bmo_risk_snapshots em 29/07/2026 (12 clientes); os 9 sem registro ficam a definir.
+-- Churn confirmado em 29/07 para Evidence e Leandro Barreto; Calvet, Rached, Luiz Felipe e Gustavo Kobayashi a confirmar.
+--
 -- para que o histórico de reuniões e tarefas deles continue ligado a um cliente.
 insert into public.bmo_clientes (id, nome, grafias, segmento) values
-  ('endoderma', 'EndoDerma', '{"Endoderma"}', null),
+  ('endoderma', 'EndoDerma', '{"Endoderma"}', 'Implementado'),
   ('amanda-quadrado-dermatologia', 'Amanda Quadrado Dermatologia', '{}', null),
   ('centro-oeste-servicos-medicos', 'Centro Oeste Serviços Médicos', '{}', null),
   ('clinica-keola-amanda-lino-teixeira', 'Clínica Keola. Amanda Lino Teixeira', '{}', null),
   ('gabriella-amorim', 'Gabriella Amorim', '{}', null),
-  ('natalia-dyna', 'Natalia Dyna', '{"Natalia Dima"}', null),
-  ('instituto-k-d', 'Instituto K.D.', '{"Instituto K.D"}', null),
-  ('marina-alves', 'Marina Alves', '{}', null),
+  ('natalia-dyna', 'Natalia Dyna', '{"Natalia Dima"}', 'Implementado'),
+  ('instituto-k-d', 'Instituto K.D.', '{"Instituto K.D"}', 'Implementado'),
+  ('marina-alves', 'Marina Alves', '{}', 'Implementado'),
   ('clinica-regen', 'Clínica Regen', '{}', null),
-  ('injecta-medinfuse', 'Injecta MedInfuse', '{"Injecta Medinfuse"}', null),
+  ('injecta-medinfuse', 'Injecta MedInfuse', '{"Injecta Medinfuse"}', 'Implementado'),
   ('rebeca-pinheiro', 'Rebeca Pinheiro', '{}', null),
-  ('instituto-leonardo-junqueira', 'Instituto Leonardo Junqueira', '{"Léo Junqueira"}', null),
-  ('instituto-essencia', 'Instituto Essencia', '{}', null),
+  ('instituto-leonardo-junqueira', 'Instituto Leonardo Junqueira', '{"Léo Junqueira"}', 'Em Implementação'),
+  ('instituto-essencia', 'Instituto Essencia', '{}', 'Em Implementação'),
   ('eliana-medeiros', 'Eliana Medeiros', '{}', null),
   ('transformare', 'Transformare', '{}', null),
-  ('prevnner-clinica-medica', 'Prevnner Clínica Médica', '{"Prevnner Clínica"}', null),
+  ('prevnner-clinica-medica', 'Prevnner Clínica Médica', '{"Prevnner Clínica"}', 'Em Implementação'),
   ('instituto-humani', 'Instituto Humani', '{}', null),
-  ('mais-saude', 'Mais Saúde', '{"Clínica Mais Saúde / JJR"}', null),
-  ('loureiro-clinic', 'Loureiro Clinic', '{"Loureiro"}', null),
-  ('clinica-suzuki', 'Clínica Suzuki', '{"Suzuki"}', null),
-  ('duo-una', 'Duo Una', '{"Douuna"}', null),
+  ('mais-saude', 'Mais Saúde', '{"Clínica Mais Saúde / JJR"}', 'Em Implementação'),
+  ('loureiro-clinic', 'Loureiro Clinic', '{"Loureiro"}', 'Implementado'),
+  ('clinica-suzuki', 'Clínica Suzuki', '{"Suzuki"}', 'Implementado'),
+  ('duo-una', 'Duo Una', '{"Douuna"}', 'Implementado'),
   ('clinica-calvet', 'Clínica Calvet', '{"Calvet"}', 'Churn'),
   ('evidence', 'Evidence', '{}', 'Churn'),
   ('leandro-barreto', 'Leandro Barreto', '{}', 'Churn'),
   ('gustavo-kobayashi', 'Gustavo Kobayashi', '{}', 'Churn'),
   ('clinica-rached', 'Clínica Rached', '{}', 'Churn'),
   ('luiz-felipe', 'Luiz Felipe', '{}', 'Churn')
-on conflict (id) do update set nome = excluded.nome, grafias = excluded.grafias;
+on conflict (id) do update set nome = excluded.nome, grafias = excluded.grafias,
+  segmento = coalesce(public.bmo_clientes.segmento, excluded.segmento);  -- não sobrescreve segmento já ajustado
