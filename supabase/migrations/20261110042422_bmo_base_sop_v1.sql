@@ -1,0 +1,3 @@
+-- Migração aplicada no Supabase em 10/11/2026 04:24 UTC pela conversa local (Claude in Chrome).
+-- Mantida aqui só como registro: a estrutura dela é convertida por 20261110120000_base_sop_v2.sql.
+-- Não reaplicar.

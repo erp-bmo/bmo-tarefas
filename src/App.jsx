@@ -31,6 +31,7 @@ const TEAM_EMOJIS = {
 const STATUS_LABEL = { pendente: 'Pendente', andamento: 'Em andamento', concluido: 'Concluída', bloqueado: 'Bloqueada' }
 const STATUS_EMOJI = { pendente: '🔲', andamento: '🔄', concluido: '✅', bloqueado: '🚫' }
 
+// Reserva: usada só se bmo_clientes não responder. A carteira oficial vem do banco.
 const ALL_CLIENTS = [
   { key: 'EndoDerma', color: '#1A6B4A' }, { key: 'Amanda Quadrado Dermatologia', color: '#AD1457' },
   { key: 'Centro Oeste Serviços Médicos', color: '#00695C' }, { key: 'Clínica Keola. Amanda Lino Teixeira', color: '#6A1B9A' },
@@ -44,6 +45,16 @@ const ALL_CLIENTS = [
   { key: 'Loureiro Clinic', color: '#6D4C41' }, { key: 'Clínica Suzuki', color: '#4A3FA0' },
   { key: 'Duo Una', color: '#2E7D32' },
 ]
+
+const PALETTE = ['#1A4D8F','#1A6B4A','#8A5A00','#5B3FA0','#C0392B','#00838F','#6D4C41','#AD1457','#3949AB','#558B2F']
+const colorFor = name => TEAM_COLORS[name] || PALETTE[[...(name||'')].reduce((a, c) => a + c.charCodeAt(0), 0) % PALETTE.length]
+const norm = s => (s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()
+// nome ou grafia normalizada → nome oficial do cliente (preenchido ao carregar bmo_clientes)
+let CLIENT_INDEX = {}
+let CLIENT_IDS = {}     // nome oficial → id em bmo_clientes
+const canonical = name => CLIENT_INDEX[norm(name)] || name
+const sameClient = (a, b) => !!a && !!b && canonical(a) === canonical(b)
+const toClients = rows => rows.filter(r => r.segmento !== 'Churn').map(r => ({ ...r, key: r.nome, color: colorFor(r.nome) }))
 
 // ─── Utils ────────────────────────────────────────────────────
 function getWeekRange() {
@@ -94,8 +105,8 @@ function EditableCell({ value, onChange }) {
 // ─── CopyModal ────────────────────────────────────────────────
 function CopyModal({ meetings, tasks, clientFilter, statusFilter, onClose, onToast }) {
   const [fmt, setFmt] = useState('whatsapp')
-  const getFiltered = () => meetings.filter(m => clientFilter==='all'||m.team===clientFilter||(m.has_cliente&&tasks.some(t=>t.meeting_id===m.id&&t.cliente===clientFilter)))
-    .map(m=>({...m,tasks:tasks.filter(t=>t.meeting_id===m.id&&t.status!=='bloqueado'&&(statusFilter==='all'||t.status===statusFilter)&&(clientFilter==='all'||m.team===clientFilter||(m.has_cliente&&t.cliente===clientFilter)))}))
+  const getFiltered = () => meetings.filter(m => clientFilter==='all'||sameClient(m.team, clientFilter)||(m.has_cliente&&tasks.some(t=>t.meeting_id===m.id&&sameClient(t.cliente, clientFilter))))
+    .map(m=>({...m,tasks:tasks.filter(t=>t.meeting_id===m.id&&t.status!=='bloqueado'&&(statusFilter==='all'||t.status===statusFilter)&&(clientFilter==='all'||sameClient(m.team, clientFilter)||(m.has_cliente&&sameClient(t.cliente, clientFilter))))}))
     .filter(m=>m.tasks.length>0)
   const buildWhatsApp=()=>{const label=clientFilter!=='all'?` · ${clientFilter}`:'';let lines=[`*📋 Tarefas BMO Gestão${label}*\n_${new Date().toLocaleDateString('pt-BR')}_\n`];getFiltered().forEach(m=>{lines.push(`*${m.title}*`);m.tasks.forEach(t=>{lines.push(`${STATUS_EMOJI[t.status]||'🔲'} ${t.description}`);lines.push(`   👤 ${t.resp}${t.prazo_fixed?` _(${t.prazo_fixed})_`:t.prazo?` _(${t.prazo})_`:''}`)});lines.push('')});return lines.join('\n').trim()}
   const buildChecklist=()=>{const mark={pendente:'[ ]',andamento:'[~]',concluido:'[x]',bloqueado:'[!]'};let lines=['TAREFAS — BMO Gestão','─'.repeat(48),''];getFiltered().forEach(m=>{lines.push(`## ${m.title} · ${m.date_label}`);m.tasks.forEach(t=>{lines.push(`${mark[t.status]||'[ ]'} ${t.description}`);lines.push(`    Resp: ${t.resp} | Prazo: ${t.prazo_fixed||t.prazo||'—'}`)});lines.push('')});return lines.join('\n').trim()}
@@ -123,7 +134,7 @@ function CopyModal({ meetings, tasks, clientFilter, statusFilter, onClose, onToa
 }
 
 // ─── Report View ──────────────────────────────────────────────
-function ReportView({ meetings, tasks, onToast }) {
+function ReportView({ clients, meetings, tasks, onToast }) {
   const [selectedClient, setSelectedClient] = useState(null)
   const [generating, setGenerating] = useState(false)
   const [reportText, setReportText] = useState('')
@@ -167,9 +178,9 @@ function ReportView({ meetings, tasks, onToast }) {
   }
 
   // Clientes que têm tarefas
-  const clientsWithTasks = ALL_CLIENTS.filter(c => {
+  const clientsWithTasks = clients.filter(c => {
     return meetings.some(m => {
-      const clientMatch = m.team === c.key || (m.has_cliente && tasks.some(t => t.meeting_id === m.id && t.cliente === c.key))
+      const clientMatch = sameClient(m.team, c.key) || (m.has_cliente && tasks.some(t => t.meeting_id === m.id && sameClient(t.cliente, c.key)))
       return clientMatch && tasks.some(t => t.meeting_id === m.id && t.status !== 'bloqueado')
     })
   })
@@ -188,13 +199,13 @@ function ReportView({ meetings, tasks, onToast }) {
     }
 
     meetings.forEach(m => {
-      const isClient = m.team === clientKey || (m.has_cliente && tasks.some(t => t.meeting_id === m.id && t.cliente === clientKey))
+      const isClient = sameClient(m.team, clientKey) || (m.has_cliente && tasks.some(t => t.meeting_id === m.id && sameClient(t.cliente, clientKey)))
       if (!isClient) return
 
       const meetingDate = parseMeetingDate(m.date_label)
 
       tasks.filter(t => t.meeting_id === m.id && t.status !== 'bloqueado').forEach(t => {
-        if (m.has_cliente && t.cliente !== clientKey && m.team !== clientKey) return
+        if (m.has_cliente && !sameClient(t.cliente, clientKey) && !sameClient(m.team, clientKey)) return
         if (t.status === 'concluido') {
           // Só inclui concluídas de reuniões dos últimos 7 dias
           if (meetingDate && meetingDate >= sevenDaysAgo) {
@@ -456,7 +467,7 @@ Caso tenham qualquer dúvida, estaremos à disposição!`
 }
 
 // ─── TaskRow ──────────────────────────────────────────────────
-function TaskRow({ task, meeting, onUpdate, onToast }) {
+function TaskRow({ task, meeting, catalogo, onUpdate, onToast }) {
   const handleStatus = async (val) => {
     onUpdate(task.id, { status: val })
     const { error } = await supabase.from('bmo_tasks').update({ status: val }).eq('id', task.id)
@@ -475,12 +486,41 @@ function TaskRow({ task, meeting, onUpdate, onToast }) {
     copyText(`[${meeting.title}]\nTarefa: ${task.description}\nResponsável: ${task.resp}${task.cliente?'\nCliente: '+task.cliente:''}\nData: ${meeting.date_label.split('—')[0].trim()}\nPrazo: ${task.prazo_fixed||task.prazo||'—'}\nStatus: ${STATUS_LABEL[task.status]}`)
     onToast('Tarefa copiada ✓')
   }
+  // Vínculo com o SOP: a tarefa da ata é subtarefa de uma tarefa do SOP. Validar = aprovar (só aprovada segue ao Sistema Interno).
+  const clienteId = CLIENT_IDS[canonical(meeting.has_cliente ? task.cliente : meeting.team)]
+  const sop = catalogo.find(c => c.id === task.sop_tarefa_id)
+  const saveLink = async (patch, msg) => {
+    onUpdate(task.id, patch)
+    const { error } = await supabase.from('bmo_tasks').update(patch).eq('id', task.id)
+    onToast(error ? 'Erro ao salvar o vínculo com o SOP' : msg)
+  }
+  const validar = id => saveLink({ sop_tarefa_id: id, cliente_id: clienteId, vinculo_status: 'validado', approved: true, approved_at: new Date().toISOString() }, `Vinculada a ${id} e aprovada ✓`)
+  const descartar = () => saveLink({ sop_tarefa_id: null, vinculo_status: 'descartado', approved: false, approved_at: null }, 'Sugestão descartada')
+  const sopSelect = label => (
+    <select value="" onChange={e => e.target.value && validar(e.target.value)} title="Vincular a uma tarefa do SOP"
+      style={{ fontSize:10, border:'1px dashed var(--border-strong)', borderRadius:10, padding:'1px 4px', background:'transparent', color:'var(--text-muted)', maxWidth:110, cursor:'pointer' }}>
+      <option value="">{label}</option>
+      {catalogo.map(c => <option key={c.id} value={c.id}>{c.id} · {c.tarefa}</option>)}
+    </select>
+  )
   const td = { padding:'9px 12px', verticalAlign:'top', borderBottom:'1px solid var(--border)' }
   return (
     <tr style={{ background: task.status==='concluido'?'#FAFAF8':'#fff', opacity: task.status==='concluido'?.55:1 }}>
       <td style={td}>
         <span style={{ fontSize:13, lineHeight:1.5, textDecoration:task.status==='concluido'?'line-through':'none', color:'var(--text)' }}>{task.description}</span>
         {task.cliente && meeting.has_cliente && <span style={{ display:'inline-block', fontSize:11, padding:'1px 7px', borderRadius:20, background:'#EAF1FA', color:'#1A4D8F', marginLeft:8 }}>{task.cliente}</span>}
+        {clienteId && catalogo.length > 0 && (
+          <span style={{ display:'inline-flex', gap:4, alignItems:'center', marginLeft:8, verticalAlign:'middle' }}>
+            {sop && task.vinculo_status === 'validado' && <span title={sop.tarefa} style={{ fontSize:10, padding:'1px 7px', borderRadius:20, background:'var(--purple-soft)', color:'var(--purple)', fontWeight:500 }}>🧭 {sop.id}</span>}
+            {sop && task.vinculo_status === 'sugerido' && <>
+              <span title={`Sugestão: ${sop.tarefa}`} style={{ fontSize:10, padding:'1px 7px', borderRadius:20, background:'var(--amber-soft)', color:'var(--amber)', fontWeight:500 }}>🧭 {sop.id}?</span>
+              <button onClick={() => validar(sop.id)} title="Validar vínculo e aprovar" style={{ fontSize:10, border:'none', background:'var(--green-soft)', color:'var(--green)', borderRadius:10, padding:'1px 6px' }}>✓</button>
+              <button onClick={descartar} title="Descartar sugestão" style={{ fontSize:10, border:'none', background:'var(--red-soft)', color:'var(--red)', borderRadius:10, padding:'1px 6px' }}>✕</button>
+              {sopSelect('corrigir')}
+            </>}
+            {!(sop && ['validado', 'sugerido'].includes(task.vinculo_status)) && sopSelect('+ SOP')}
+          </span>
+        )}
       </td>
       <td style={{...td, minWidth:100}}><EditableCell value={task.resp} onChange={v=>handleField('resp',v)}/></td>
       <td style={{...td, minWidth:80}}><span style={{fontSize:11,color:'var(--text-muted)',whiteSpace:'nowrap'}}>{meeting.date_label.split('—')[0].trim()}</span></td>
@@ -638,14 +678,14 @@ function NewTaskModal({ meeting, meetings, onClose, onSave, onToast }) {
 }
 
 // ─── MeetingBlock ─────────────────────────────────────────────
-function MeetingBlock({ meeting, tasks, clientFilter, statusFilter, onUpdate, onAdd, onToast }) {
+function MeetingBlock({ meeting, catalogo, tasks, clientFilter, statusFilter, onUpdate, onAdd, onToast }) {
   const [showNewTask, setShowNewTask] = useState(false)
   const color = TEAM_COLORS[meeting.team] || '#9B9890'
   const emoji = TEAM_EMOJIS[meeting.team] || '📋'
   const visibleTasks = tasks.filter(t => {
     if (t.status === 'bloqueado') return false
     const statusOk = statusFilter === 'all' || t.status === statusFilter
-    const clientOk = clientFilter === 'all' || meeting.team === clientFilter || (meeting.has_cliente && t.cliente === clientFilter)
+    const clientOk = clientFilter === 'all' || sameClient(meeting.team, clientFilter) || (meeting.has_cliente && sameClient(t.cliente, clientFilter))
     return statusOk && clientOk
   })
   const handleCopyMeeting = () => {
@@ -656,7 +696,7 @@ function MeetingBlock({ meeting, tasks, clientFilter, statusFilter, onUpdate, on
   const th = { padding:'7px 12px', textAlign:'left', fontSize:10, fontWeight:600, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'.05em', whiteSpace:'nowrap', background:'var(--bg)', borderBottom:'1px solid var(--border)' }
 
   // Show block even if no visible tasks, so user can add tasks
-  const showBlock = visibleTasks.length > 0 || (clientFilter === 'all' || meeting.team === clientFilter)
+  const showBlock = visibleTasks.length > 0 || (clientFilter === 'all' || sameClient(meeting.team, clientFilter))
   if (!showBlock) return null
 
   return (
@@ -689,7 +729,7 @@ function MeetingBlock({ meeting, tasks, clientFilter, statusFilter, onUpdate, on
           <colgroup><col/><col style={{width:110}}/><col style={{width:82}}/><col style={{width:115}}/><col style={{width:105}}/><col style={{width:72}}/></colgroup>
           <thead><tr><th style={th}>Tarefa</th><th style={th}>Responsável</th><th style={th}>Data</th><th style={th}>Prazo</th><th style={th}>Status</th><th style={th}></th></tr></thead>
           <tbody>
-            {visibleTasks.map(t => <TaskRow key={t.id} task={t} meeting={meeting} onUpdate={onUpdate} onToast={onToast}/>)}
+            {visibleTasks.map(t => <TaskRow key={t.id} task={t} meeting={meeting} catalogo={catalogo} onUpdate={onUpdate} onToast={onToast}/>)}
             {visibleTasks.length === 0 && (
               <tr><td colSpan={6} style={{ padding:'20px 16px', textAlign:'center', color:'var(--text-muted)', fontSize:13 }}>
                 Nenhuma tarefa visível · <button onClick={() => setShowNewTask(true)} style={{ color:'var(--accent)', background:'none', border:'none', cursor:'pointer', fontSize:13, fontWeight:500 }}>+ Adicionar tarefa</button>
@@ -714,6 +754,8 @@ function MeetingBlock({ meeting, tasks, clientFilter, statusFilter, onUpdate, on
 export default function App() {
   const [meetings, setMeetings] = useState([])
   const [tasks, setTasks] = useState([])
+  const [clients, setClients] = useState(() => ALL_CLIENTS.map(c => ({ ...c, nome: c.key })))
+  const [catalogo, setCatalogo] = useState([])
   const [loading, setLoading] = useState(true)
   const [clientFilter, setClientFilter] = useState('all')
   const [statusFilter, setStatusFilter] = useState('all')
@@ -727,10 +769,20 @@ export default function App() {
 
   const loadData = useCallback(async () => {
     setLoading(true)
-    const [{ data: mData }, { data: tData }] = await Promise.all([
+    const [{ data: mData }, { data: tData }, { data: cData }, { data: sData }] = await Promise.all([
       supabase.from('bmo_meetings').select('*').order('created_at'),
       supabase.from('bmo_tasks').select('*').order('sort_order'),
+      supabase.from('bmo_clientes').select('*').order('nome'),
+      supabase.from('bmo_sop_catalogo').select('*').eq('ativo', true).order('sequencia'),
     ])
+    if (cData?.length) {
+      const idx = {}
+      cData.forEach(c => { [c.nome, ...(c.grafias || [])].forEach(n => { idx[norm(n)] = c.nome }) })
+      CLIENT_INDEX = idx
+      CLIENT_IDS = Object.fromEntries(cData.map(c => [c.nome, c.id]))
+      setClients(toClients(cData))
+    }
+    if (sData) setCatalogo(sData)
     if (mData) setMeetings(mData)
     if (tData) setTasks(tData)
     setLoading(false)
@@ -746,6 +798,7 @@ export default function App() {
       })
       .on('postgres_changes', { event:'INSERT', schema:'public', table:'bmo_meetings' }, () => loadData())
       .on('postgres_changes', { event:'INSERT', schema:'public', table:'bmo_tasks' }, () => loadData())
+      .on('postgres_changes', { event:'*', schema:'public', table:'bmo_clientes' }, () => loadData())
       .subscribe()
     return () => supabase.removeChannel(channel)
   }, [loadData])
@@ -759,7 +812,7 @@ export default function App() {
   }, [])
 
   const exportCSV = () => {
-    const filtered = meetings.filter(m => clientFilter==='all'||m.team===clientFilter||(m.has_cliente&&tasks.some(t=>t.meeting_id===m.id&&t.cliente===clientFilter)))
+    const filtered = meetings.filter(m => clientFilter==='all'||sameClient(m.team, clientFilter)||(m.has_cliente&&tasks.some(t=>t.meeting_id===m.id&&sameClient(t.cliente, clientFilter))))
     const rows = [['Reunião','Data Reunião','Equipe','Tarefa','Responsável','Cliente','Prazo','Status']]
     filtered.forEach(m => {
       tasks.filter(t=>t.meeting_id===m.id&&t.status!=='bloqueado'&&(statusFilter==='all'||t.status===statusFilter)).forEach(t=>{
@@ -777,7 +830,7 @@ export default function App() {
   const filteredTasks = tasks.filter(t => {
     if (t.status === 'bloqueado') return false
     const m = meetings.find(x=>x.id===t.meeting_id); if (!m) return false
-    const clientOk = clientFilter==='all'||m.team===clientFilter||(m.has_cliente&&t.cliente===clientFilter)
+    const clientOk = clientFilter==='all'||sameClient(m.team, clientFilter)||(m.has_cliente&&sameClient(t.cliente, clientFilter))
     const statusOk = statusFilter==='all'||t.status===statusFilter
     return clientOk && statusOk
   })
@@ -787,8 +840,8 @@ export default function App() {
   const clientCounts = {}
   tasks.filter(t=>t.status!=='bloqueado').forEach(t => {
     const m = meetings.find(x=>x.id===t.meeting_id); if (!m) return
-    clientCounts[m.team] = (clientCounts[m.team]||0)+1
-    if (m.has_cliente&&t.cliente&&t.cliente!=='Não identificado') clientCounts[t.cliente]=(clientCounts[t.cliente]||0)+1
+    clientCounts[canonical(m.team)] = (clientCounts[canonical(m.team)]||0)+1
+    if (m.has_cliente&&t.cliente&&t.cliente!=='Não identificado') clientCounts[canonical(t.cliente)]=(clientCounts[canonical(t.cliente)]||0)+1
   })
 
   const btnBase = { display:'inline-flex', alignItems:'center', gap:6, padding:'7px 14px', borderRadius:5, fontSize:13, fontWeight:500, cursor:'pointer', border:'1px solid var(--border-strong)', background:'#fff', color:'var(--text)', whiteSpace:'nowrap' }
@@ -868,7 +921,7 @@ export default function App() {
             <div style={{ height:1, background:'var(--border)', margin:'4px 12px' }}/>
             <div style={{ padding:'8px 12px' }}>
               <div style={{ fontSize:10, fontWeight:600, color:'var(--text-light)', textTransform:'uppercase', letterSpacing:'.06em', marginBottom:8, padding:'0 4px' }}>Clínicas</div>
-              {ALL_CLIENTS.map(({key,color})=>(
+              {clients.map(({key,color})=>(
                 <button key={key} style={sidebarBtn(key,color)} onClick={()=>setClientFilter(key)}>
                   <div style={{ width:8, height:8, borderRadius:'50%', background:color, flexShrink:0 }}/>{key}
                   <span style={{ marginLeft:'auto', fontSize:11, background:clientFilter===key?'var(--accent)':'var(--bg)', border:`1px solid ${clientFilter===key?'var(--accent)':'var(--border)'}`, padding:'1px 6px', borderRadius:10, color:clientFilter===key?'#fff':'var(--text-muted)' }}>{clientCounts[key]||0}</span>
@@ -905,7 +958,7 @@ export default function App() {
                 <div>Carregando dados do Supabase...</div>
               </div>
             ) : (
-              meetings.map(m => <MeetingBlock key={m.id} meeting={m} tasks={tasks.filter(t=>t.meeting_id===m.id)} clientFilter={clientFilter} statusFilter={statusFilter} onUpdate={updateTask} onAdd={addTask} onToast={showToast}/>)
+              meetings.map(m => <MeetingBlock key={m.id} meeting={m} catalogo={catalogo} tasks={tasks.filter(t=>t.meeting_id===m.id)} clientFilter={clientFilter} statusFilter={statusFilter} onUpdate={updateTask} onAdd={addTask} onToast={showToast}/>)
             )}
           </>}
 
@@ -918,12 +971,12 @@ export default function App() {
                   Semana atual: <strong>{getWeekRange().label}</strong> · Tarefas bloqueadas são excluídas automaticamente.
                 </p>
               </div>
-              <ReportView meetings={meetings} tasks={tasks} onToast={showToast}/>
+              <ReportView clients={clients} meetings={meetings} tasks={tasks} onToast={showToast}/>
             </div>
           )}
 
           {activeTab === 'sop' && (
-            <SopView clients={ALL_CLIENTS} meetings={meetings} tasks={tasks} onUpdateTask={updateTask} onReload={loadData} onToast={showToast}/>
+            <SopView clients={clients} catalogo={catalogo} meetings={meetings} tasks={tasks} onClientsChange={loadData} onReload={loadData} onToast={showToast}/>
           )}
         </main>
       </div>
