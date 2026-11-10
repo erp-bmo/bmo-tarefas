@@ -318,7 +318,11 @@ export default function SopView({ clients, meetings, tasks, onUpdateTask, onRelo
                                   </span>}
                                   {expanded && <div style={{ marginTop: 6, color: 'var(--text-muted)', lineHeight: 1.5 }}>
                                     <div>{t.descricao}</div>
+                                    {t.pop?.passos && <ol style={{ margin: '6px 0 0 18px' }}>{t.pop.passos.map((p, i) => <li key={i}>{p}</li>)}</ol>}
+                                    {t.pop?.ferr?.length > 0 && <div style={{ marginTop: 4 }}><strong>Ferramentas:</strong> {t.pop.ferr.join(' · ')}</div>}
+                                    {t.pop?.cuid?.length > 0 && <div style={{ marginTop: 4 }}><strong>Cuidados:</strong> {t.pop.cuid.join(' ')}</div>}
                                     <div style={{ marginTop: 4 }}><strong>Gate:</strong> {t.gate}</div>
+                                    {t.pop?.pend?.length > 0 && <div style={{ marginTop: 4, color: 'var(--amber)' }}><strong>Pendência do POP:</strong> {t.pop.pend.join(' ')}</div>}
                                     {t.checklist && renderChecklist(t)}
                                   </div>}
                                   {!expanded && t.checklist && <div><button onClick={() => setOpenTask(`${c}:${t.id}`)} style={{ fontSize: 11, color: 'var(--accent)', background: 'none', border: 'none', padding: 0, marginTop: 2 }}>abrir checklist</button></div>}

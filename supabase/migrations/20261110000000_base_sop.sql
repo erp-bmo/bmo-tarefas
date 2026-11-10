@@ -13,8 +13,7 @@ create table if not exists public.bmo_clientes (
   id                  text primary key,                 -- slug estável, ex.: 'endoderma'
   nome                text not null unique,             -- nome oficial
   grafias             text[] not null default '{}',     -- grafias alternativas encontradas nas atas
-  segmento            text not null default 'Em Implementação'
-                      check (segmento in ('Em Implementação', 'Implementado', 'Churn')),
+  segmento            text check (segmento in ('Em Implementação', 'Implementado', 'Churn')),  -- vazio = a definir
   id_sistema_interno  text,                             -- preenchido quando houver API / cadastro
   gerente_contas      text,                             -- responsável BMO (usuário do Sistema Interno)
   inicio_kickoff      date,                             -- Dia 0, base do Gantt planejado
@@ -41,6 +40,7 @@ create table if not exists public.bmo_sop_catalogo (
   prioridade         text check (prioridade in ('P1', 'P2', 'P3')),
   gate               text,
   skill_vinculada    text,
+  pop                jsonb,                             -- POP v8: objetivo, entradas, passos, saída, ferramentas, cuidados, pendências
   sem_ini            numeric,                           -- semana planejada de início da etapa
   sem_fim            numeric,                           -- semana planejada de fim da etapa
   ativo              boolean not null default true      -- tarefa retirada do SOP vira false, não é apagada
@@ -105,7 +105,7 @@ with base as (
   from public.bmo_clientes c
   cross join public.bmo_sop_catalogo t
   left join public.bmo_sop_andamento a on a.cliente_id = c.id and a.sop_tarefa_id = t.id
-  where t.ativo and c.segmento <> 'Churn'
+  where t.ativo and coalesce(c.segmento, '') <> 'Churn'
 ),
 frente as (
   select cliente_id, max(sequencia) as frente_seq
