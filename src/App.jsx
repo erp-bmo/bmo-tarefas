@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase } from './supabase.js'
+import SopView from './SopView.jsx'
 
 // ─── Constants ───────────────────────────────────────────────
 const TEAM_COLORS = {
@@ -11,6 +12,9 @@ const TEAM_COLORS = {
   'Instituto K.D.': '#3949AB', 'Marina Alves': '#D84315', 'Mais Saúde': '#00838F',
   'Instituto Essencia': '#558B2F', 'Prevnner Clínica Médica': '#1A4D8F',
   'Gustavo Kobayashi': '#6D4C41',
+  'Amanda Quadrado Dermatologia': '#AD1457', 'Centro Oeste Serviços Médicos': '#00695C',
+  'Clínica Keola. Amanda Lino Teixeira': '#6A1B9A', 'Gabriella Amorim': '#C2185B', 'Clínica Regen': '#2E7D32',
+  'Rebeca Pinheiro': '#BF360C', 'Eliana Medeiros': '#8E24AA', 'Transformare': '#00897B', 'Instituto Humani': '#5D4037',
 }
 const TEAM_EMOJIS = {
   'Squad Palermo': '🏟️', 'Gerentes de Contas': '👥', 'Interno BMO': '🏢',
@@ -20,21 +24,78 @@ const TEAM_EMOJIS = {
   'Evidence': '🏥', 'Duo Una': '🏥', 'Leandro Barreto': '👨‍⚕️',
   'Instituto K.D.': '🏥', 'Marina Alves': '👩‍⚕️', 'Mais Saúde': '❤️',
   'Instituto Essencia': '🌿', 'Prevnner Clínica Médica': '🏥', 'Gustavo Kobayashi': '🦷',
+  'Amanda Quadrado Dermatologia': '✨', 'Centro Oeste Serviços Médicos': '🏥', 'Clínica Keola. Amanda Lino Teixeira': '🩺',
+  'Gabriella Amorim': '👩‍⚕️', 'Clínica Regen': '🌱', 'Rebeca Pinheiro': '👩‍⚕️', 'Eliana Medeiros': '👩‍⚕️',
+  'Transformare': '🔄', 'Instituto Humani': '🔬',
 }
 const STATUS_LABEL = { pendente: 'Pendente', andamento: 'Em andamento', concluido: 'Concluída', bloqueado: 'Bloqueada' }
 const STATUS_EMOJI = { pendente: '🔲', andamento: '🔄', concluido: '✅', bloqueado: '🚫' }
 
+// Reserva: usada só se bmo_clientes não responder. A carteira oficial vem do banco.
 const ALL_CLIENTS = [
-  { key: 'Clínica Rached', color: '#C0392B' }, { key: 'Clínica Suzuki', color: '#4A3FA0' },
-  { key: 'EndoDerma', color: '#1A6B4A' }, { key: 'Instituto Leonardo Junqueira', color: '#0B57D0' },
-  { key: 'Loureiro Clinic', color: '#6D4C41' }, { key: 'Luiz Felipe', color: '#00796B' },
-  { key: 'Clínica Calvet', color: '#8A5A00' }, { key: 'Injecta MedInfuse', color: '#1A4D8F' },
-  { key: 'Natalia Dyna', color: '#7B1FA2' }, { key: 'Evidence', color: '#1565C0' },
-  { key: 'Duo Una', color: '#2E7D32' }, { key: 'Leandro Barreto', color: '#8A2060' },
+  { key: 'EndoDerma', color: '#1A6B4A' }, { key: 'Amanda Quadrado Dermatologia', color: '#AD1457' },
+  { key: 'Centro Oeste Serviços Médicos', color: '#00695C' }, { key: 'Clínica Keola. Amanda Lino Teixeira', color: '#6A1B9A' },
+  { key: 'Gabriella Amorim', color: '#C2185B' }, { key: 'Natalia Dyna', color: '#7B1FA2' },
   { key: 'Instituto K.D.', color: '#3949AB' }, { key: 'Marina Alves', color: '#D84315' },
-  { key: 'Mais Saúde', color: '#00838F' }, { key: 'Instituto Essencia', color: '#558B2F' },
-  { key: 'Prevnner Clínica Médica', color: '#1A4D8F' }, { key: 'Gustavo Kobayashi', color: '#6D4C41' },
+  { key: 'Clínica Regen', color: '#2E7D32' }, { key: 'Injecta MedInfuse', color: '#1A4D8F' },
+  { key: 'Rebeca Pinheiro', color: '#BF360C' }, { key: 'Instituto Leonardo Junqueira', color: '#0B57D0' },
+  { key: 'Instituto Essencia', color: '#558B2F' }, { key: 'Eliana Medeiros', color: '#8E24AA' },
+  { key: 'Transformare', color: '#00897B' }, { key: 'Prevnner Clínica Médica', color: '#1565C0' },
+  { key: 'Instituto Humani', color: '#5D4037' }, { key: 'Mais Saúde', color: '#00838F' },
+  { key: 'Loureiro Clinic', color: '#6D4C41' }, { key: 'Clínica Suzuki', color: '#4A3FA0' },
+  { key: 'Duo Una', color: '#2E7D32' },
 ]
+
+const PALETTE = ['#1A4D8F','#1A6B4A','#8A5A00','#5B3FA0','#C0392B','#00838F','#6D4C41','#AD1457','#3949AB','#558B2F']
+const colorFor = name => TEAM_COLORS[name] || PALETTE[[...(name||'')].reduce((a, c) => a + c.charCodeAt(0), 0) % PALETTE.length]
+const norm = s => (s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()
+// nome ou grafia normalizada → nome oficial do cliente (preenchido ao carregar bmo_clientes)
+let CLIENT_INDEX = {}
+let CLIENT_IDS = {}     // nome oficial → id em bmo_clientes
+const canonical = name => CLIENT_INDEX[norm(name)] || name
+const sameClient = (a, b) => !!a && !!b && canonical(a) === canonical(b)
+const toClients = rows => rows.filter(r => r.segmento !== 'Churn').map(r => ({ ...r, key: r.nome, color: colorFor(r.nome) }))
+let CLIENT_NAMES = {}  // id em bmo_clientes → nome oficial
+
+// Data da reunião: meeting_date (ISO) → DD/MM/AAAA no date_label → created_at
+function meetingDate(m) {
+  if (m.meeting_date) return new Date(`${m.meeting_date}T00:00:00`)
+  const mt = (m.date_label || '').match(/(\d{2})\/(\d{2})\/(\d{4})/)
+  if (mt) return new Date(`${mt[3]}-${mt[2]}-${mt[1]}T00:00:00`)
+  return m.created_at ? new Date(m.created_at) : new Date(0)
+}
+function fmtDate(d) {
+  if (!d || isNaN(d) || d.getTime() === 0) return '—'
+  return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })
+}
+function meetingDateLabel(m) {
+  return m.meeting_date ? fmtDate(meetingDate(m)) : ((m.date_label || '').split('—')[0].trim() || fmtDate(meetingDate(m)))
+}
+// Cliente da reunião: cadastro (cliente_id) → nome canônico da equipe/cliente (team)
+const meetingClient = m => (m.cliente_id && CLIENT_NAMES[m.cliente_id]) || canonical(m.team) || 'Sem cliente'
+
+function countByStatus(list) {
+  const c = { pendente: 0, andamento: 0, concluido: 0, bloqueado: 0 }
+  list.forEach(t => { if (c[t.status] !== undefined) c[t.status]++ })
+  return c
+}
+
+// ─── StatusCounts ─────────────────────────────────────────────
+const STATUS_ORDER = ['pendente', 'andamento', 'concluido', 'bloqueado']
+function StatusCounts({ counts, compact }) {
+  return (
+    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+      {STATUS_ORDER.map(s => (
+        <span key={s} title={STATUS_LABEL[s]} style={{
+          ...STATUS_STYLES[s], fontSize: 11, fontWeight: 500, padding: compact ? '1px 7px' : '2px 9px',
+          borderRadius: 20, whiteSpace: 'nowrap', opacity: counts[s] ? 1 : .45,
+        }}>
+          {STATUS_EMOJI[s]} {counts[s]}{compact ? '' : ` ${STATUS_LABEL[s].toLowerCase()}`}
+        </span>
+      ))}
+    </div>
+  )
+}
 
 // ─── Utils ────────────────────────────────────────────────────
 function getWeekRange() {
@@ -85,8 +146,8 @@ function EditableCell({ value, onChange }) {
 // ─── CopyModal ────────────────────────────────────────────────
 function CopyModal({ meetings, tasks, clientFilter, statusFilter, onClose, onToast }) {
   const [fmt, setFmt] = useState('whatsapp')
-  const getFiltered = () => meetings.filter(m => clientFilter==='all'||m.team===clientFilter||(m.has_cliente&&tasks.some(t=>t.meeting_id===m.id&&t.cliente===clientFilter)))
-    .map(m=>({...m,tasks:tasks.filter(t=>t.meeting_id===m.id&&t.status!=='bloqueado'&&(statusFilter==='all'||t.status===statusFilter)&&(clientFilter==='all'||m.team===clientFilter||(m.has_cliente&&t.cliente===clientFilter)))}))
+  const getFiltered = () => meetings.filter(m => clientFilter==='all'||sameClient(m.team, clientFilter)||(m.has_cliente&&tasks.some(t=>t.meeting_id===m.id&&sameClient(t.cliente, clientFilter))))
+    .map(m=>({...m,tasks:tasks.filter(t=>t.meeting_id===m.id&&t.status!=='bloqueado'&&(statusFilter==='all'||t.status===statusFilter)&&(clientFilter==='all'||sameClient(m.team, clientFilter)||(m.has_cliente&&sameClient(t.cliente, clientFilter))))}))
     .filter(m=>m.tasks.length>0)
   const buildWhatsApp=()=>{const label=clientFilter!=='all'?` · ${clientFilter}`:'';let lines=[`*📋 Tarefas BMO Gestão${label}*\n_${new Date().toLocaleDateString('pt-BR')}_\n`];getFiltered().forEach(m=>{lines.push(`*${m.title}*`);m.tasks.forEach(t=>{lines.push(`${STATUS_EMOJI[t.status]||'🔲'} ${t.description}`);lines.push(`   👤 ${t.resp}${t.prazo_fixed?` _(${t.prazo_fixed})_`:t.prazo?` _(${t.prazo})_`:''}`)});lines.push('')});return lines.join('\n').trim()}
   const buildChecklist=()=>{const mark={pendente:'[ ]',andamento:'[~]',concluido:'[x]',bloqueado:'[!]'};let lines=['TAREFAS — BMO Gestão','─'.repeat(48),''];getFiltered().forEach(m=>{lines.push(`## ${m.title} · ${m.date_label}`);m.tasks.forEach(t=>{lines.push(`${mark[t.status]||'[ ]'} ${t.description}`);lines.push(`    Resp: ${t.resp} | Prazo: ${t.prazo_fixed||t.prazo||'—'}`)});lines.push('')});return lines.join('\n').trim()}
@@ -114,7 +175,7 @@ function CopyModal({ meetings, tasks, clientFilter, statusFilter, onClose, onToa
 }
 
 // ─── Report View ──────────────────────────────────────────────
-function ReportView({ meetings, tasks, onToast }) {
+function ReportView({ clients, meetings, tasks, onToast }) {
   const [selectedClient, setSelectedClient] = useState(null)
   const [generating, setGenerating] = useState(false)
   const [reportText, setReportText] = useState('')
@@ -158,9 +219,9 @@ function ReportView({ meetings, tasks, onToast }) {
   }
 
   // Clientes que têm tarefas
-  const clientsWithTasks = ALL_CLIENTS.filter(c => {
+  const clientsWithTasks = clients.filter(c => {
     return meetings.some(m => {
-      const clientMatch = m.team === c.key || (m.has_cliente && tasks.some(t => t.meeting_id === m.id && t.cliente === c.key))
+      const clientMatch = sameClient(m.team, c.key) || (m.has_cliente && tasks.some(t => t.meeting_id === m.id && sameClient(t.cliente, c.key)))
       return clientMatch && tasks.some(t => t.meeting_id === m.id && t.status !== 'bloqueado')
     })
   })
@@ -179,13 +240,13 @@ function ReportView({ meetings, tasks, onToast }) {
     }
 
     meetings.forEach(m => {
-      const isClient = m.team === clientKey || (m.has_cliente && tasks.some(t => t.meeting_id === m.id && t.cliente === clientKey))
+      const isClient = sameClient(m.team, clientKey) || (m.has_cliente && tasks.some(t => t.meeting_id === m.id && sameClient(t.cliente, clientKey)))
       if (!isClient) return
 
       const meetingDate = parseMeetingDate(m.date_label)
 
       tasks.filter(t => t.meeting_id === m.id && t.status !== 'bloqueado').forEach(t => {
-        if (m.has_cliente && t.cliente !== clientKey && m.team !== clientKey) return
+        if (m.has_cliente && !sameClient(t.cliente, clientKey) && !sameClient(m.team, clientKey)) return
         if (t.status === 'concluido') {
           // Só inclui concluídas de reuniões dos últimos 7 dias
           if (meetingDate && meetingDate >= sevenDaysAgo) {
@@ -447,7 +508,7 @@ Caso tenham qualquer dúvida, estaremos à disposição!`
 }
 
 // ─── TaskRow ──────────────────────────────────────────────────
-function TaskRow({ task, meeting, onUpdate, onToast }) {
+function TaskRow({ task, meeting, catalogo, onUpdate, onToast }) {
   const handleStatus = async (val) => {
     onUpdate(task.id, { status: val })
     const { error } = await supabase.from('bmo_tasks').update({ status: val }).eq('id', task.id)
@@ -463,18 +524,56 @@ function TaskRow({ task, meeting, onUpdate, onToast }) {
     await handleStatus(s); onToast(s === 'concluido' ? 'Concluída ✓' : 'Reaberta')
   }
   const handleCopy = () => {
-    copyText(`[${meeting.title}]\nTarefa: ${task.description}\nResponsável: ${task.resp}${task.cliente?'\nCliente: '+task.cliente:''}\nData: ${meeting.date_label.split('—')[0].trim()}\nPrazo: ${task.prazo_fixed||task.prazo||'—'}\nStatus: ${STATUS_LABEL[task.status]}`)
+    copyText(`[${meeting.title}]\nTarefa: ${task.description}\nResponsável: ${task.resp}${task.cliente?'\nCliente: '+task.cliente:''}\nData: ${meetingDateLabel(meeting)}\nPrazo: ${task.prazo_fixed||task.prazo||'—'}\nStatus: ${STATUS_LABEL[task.status]}`)
     onToast('Tarefa copiada ✓')
   }
+  // Vínculo com o SOP: a tarefa da ata é subtarefa de uma tarefa do SOP. Validar = aprovar (só aprovada segue ao Sistema Interno).
+  const clienteId = task.cliente_id || meeting.cliente_id || CLIENT_IDS[canonical(meeting.has_cliente ? task.cliente : meeting.team)]
+  const sop = catalogo.find(c => c.id === task.sop_tarefa_id)
+  const saveLink = async (patch, msg) => {
+    onUpdate(task.id, patch)
+    const { error } = await supabase.from('bmo_tasks').update(patch).eq('id', task.id)
+    onToast(error ? 'Erro ao salvar o vínculo com o SOP' : msg)
+  }
+  const validar = id => saveLink({ sop_tarefa_id: id, cliente_id: clienteId, vinculo_status: 'validado', approved: true, approved_at: new Date().toISOString() }, `Vinculada a ${id} e aprovada ✓`)
+  const descartar = () => saveLink({ sop_tarefa_id: null, vinculo_status: 'descartado', approved: false, approved_at: null }, 'Sugestão descartada')
+  const sopSelect = label => (
+    <select value="" onChange={e => e.target.value && validar(e.target.value)} title="Vincular a uma tarefa do SOP"
+      style={{ fontSize:10, border:'1px dashed var(--border-strong)', borderRadius:10, padding:'1px 4px', background:'transparent', color:'var(--text-muted)', maxWidth:110, cursor:'pointer' }}>
+      <option value="">{label}</option>
+      {catalogo.map(c => <option key={c.id} value={c.id}>{c.id} · {c.tarefa}</option>)}
+    </select>
+  )
   const td = { padding:'9px 12px', verticalAlign:'top', borderBottom:'1px solid var(--border)' }
+  const details = [
+    task.criterio_aceite && `Critério de aceite: ${task.criterio_aceite}`,
+    task.dependencia && `Dependência: ${task.dependencia}`,
+    task.proximo_encaminhamento && `Próximo passo: ${task.proximo_encaminhamento}`,
+    task.observacoes && `Obs.: ${task.observacoes}`,
+  ].filter(Boolean).join('\n')
+  const chip = { display:'inline-block', fontSize:10, fontWeight:600, padding:'1px 6px', borderRadius:4, marginRight:6, verticalAlign:'1px' }
   return (
-    <tr style={{ background: task.status==='concluido'?'#FAFAF8':'#fff', opacity: task.status==='concluido'?.55:1 }}>
+    <tr style={{ background: task.status==='concluido'?'#FAFAF8':'#fff', opacity: task.status==='concluido'?.55:1 }} title={details || undefined}>
       <td style={td}>
+        {task.prioridade && <span style={{ ...chip, background: task.prioridade==='P1'?'#FDEAEA':'#EEECE6', color: task.prioridade==='P1'?'#8A2020':'#5A584F' }}>{task.prioridade}</span>}
         <span style={{ fontSize:13, lineHeight:1.5, textDecoration:task.status==='concluido'?'line-through':'none', color:'var(--text)' }}>{task.description}</span>
-        {task.cliente && meeting.has_cliente && <span style={{ display:'inline-block', fontSize:11, padding:'1px 7px', borderRadius:20, background:'#EAF1FA', color:'#1A4D8F', marginLeft:8 }}>{task.cliente}</span>}
+        {task.frente && <span style={{ display:'inline-block', fontSize:11, padding:'1px 7px', borderRadius:20, background:'var(--bg)', color:'var(--text-muted)', marginLeft:8, border:'1px solid var(--border)' }}>{task.frente}</span>}
+        {task.cliente && meeting.has_cliente && !meeting.cliente_id && <span style={{ display:'inline-block', fontSize:11, padding:'1px 7px', borderRadius:20, background:'#EAF1FA', color:'#1A4D8F', marginLeft:8 }}>{task.cliente}</span>}
+        {clienteId && catalogo.length > 0 && (
+          <span style={{ display:'inline-flex', gap:4, alignItems:'center', marginLeft:8, verticalAlign:'middle' }}>
+            {sop && task.vinculo_status === 'validado' && <span title={sop.tarefa} style={{ fontSize:10, padding:'1px 7px', borderRadius:20, background:'var(--purple-soft)', color:'var(--purple)', fontWeight:500 }}>🧭 {sop.id}</span>}
+            {sop && task.vinculo_status === 'sugerido' && <>
+              <span title={`Sugestão: ${sop.tarefa}`} style={{ fontSize:10, padding:'1px 7px', borderRadius:20, background:'var(--amber-soft)', color:'var(--amber)', fontWeight:500 }}>🧭 {sop.id}?</span>
+              <button onClick={() => validar(sop.id)} title="Validar vínculo e aprovar" style={{ fontSize:10, border:'none', background:'var(--green-soft)', color:'var(--green)', borderRadius:10, padding:'1px 6px' }}>✓</button>
+              <button onClick={descartar} title="Descartar sugestão" style={{ fontSize:10, border:'none', background:'var(--red-soft)', color:'var(--red)', borderRadius:10, padding:'1px 6px' }}>✕</button>
+              {sopSelect('corrigir')}
+            </>}
+            {!(sop && ['validado', 'sugerido'].includes(task.vinculo_status)) && sopSelect('+ SOP')}
+          </span>
+        )}
       </td>
       <td style={{...td, minWidth:100}}><EditableCell value={task.resp} onChange={v=>handleField('resp',v)}/></td>
-      <td style={{...td, minWidth:80}}><span style={{fontSize:11,color:'var(--text-muted)',whiteSpace:'nowrap'}}>{meeting.date_label.split('—')[0].trim()}</span></td>
+      <td style={{...td, minWidth:80}}><span style={{fontSize:11,color:'var(--text-muted)',whiteSpace:'nowrap'}}>{meetingDateLabel(meeting)}</span></td>
       <td style={{...td, minWidth:110}}>
         {task.prazo_fixed ? <span style={{fontSize:12,color:'var(--amber)',fontWeight:500}}>{task.prazo_fixed}</span>
           : <input type="date" value={task.prazo||''} onChange={e=>handleField('prazo',e.target.value)}
@@ -520,8 +619,10 @@ function NewTaskModal({ meeting, meetings, onClose, onSave, onToast }) {
       meeting_id: meeting.id,
       description: desc.trim(),
       resp: resp.trim(),
-      cliente: cliente.trim(),
-      cliente_tag: 'tag-nd',
+      cliente: cliente.trim() || (meeting.cliente_id ? meeting.team : ''),
+      cliente_tag: meeting.cliente_id ? `tag-${meeting.cliente_id}` : 'tag-nd',
+      ...(meeting.cliente_id ? { cliente_id: meeting.cliente_id } : {}),
+      origem: 'manual',
       prazo: prazo,
       prazo_fixed: '',
       status: 'pendente',
@@ -598,7 +699,7 @@ function NewTaskModal({ meeting, meetings, onClose, onSave, onToast }) {
               />
             </div>
           </div>
-          {meeting.has_cliente && (
+          {meeting.has_cliente && !meeting.cliente_id && (
             <div>
               <label style={labelStyle}>Cliente</label>
               <input
@@ -629,75 +730,112 @@ function NewTaskModal({ meeting, meetings, onClose, onSave, onToast }) {
 }
 
 // ─── MeetingBlock ─────────────────────────────────────────────
-function MeetingBlock({ meeting, tasks, clientFilter, statusFilter, onUpdate, onAdd, onToast }) {
+// Bloco recolhível de uma reunião transcrita: nome, data, nº de tarefas por status
+function MeetingBlock({ meeting, catalogo, tasks, statusFilter, open, onToggle, onUpdate, onAdd, onToast }) {
   const [showNewTask, setShowNewTask] = useState(false)
-  const color = TEAM_COLORS[meeting.team] || '#9B9890'
-  const emoji = TEAM_EMOJIS[meeting.team] || '📋'
-  const visibleTasks = tasks.filter(t => {
-    if (t.status === 'bloqueado') return false
-    const statusOk = statusFilter === 'all' || t.status === statusFilter
-    const clientOk = clientFilter === 'all' || meeting.team === clientFilter || (meeting.has_cliente && t.cliente === clientFilter)
-    return statusOk && clientOk
-  })
-  const handleCopyMeeting = () => {
-    const lines = [`${meeting.title} — ${meeting.date_label}\n`]
+  const color = colorFor(meeting.team)
+  const counts = countByStatus(tasks)
+  const visibleTasks = tasks.filter(t => statusFilter === 'all' || t.status === statusFilter)
+  const dateLabel = meetingDateLabel(meeting)
+  const sourceLabel = meeting.source === 'gemini' ? '✦ Gemini' : meeting.source === 'tldv' ? '● tl;dv' : meeting.source === 'calendar' ? '📅 Agenda' : meeting.source === 'manual' ? '✎ Manual' : meeting.source === 'sop' ? '🧭 SOP' : null
+
+  const handleCopyMeeting = (e) => {
+    e.stopPropagation()
+    const lines = [`${meeting.title} — ${dateLabel}\n`]
     visibleTasks.forEach(t => lines.push(`• ${t.description} | ${t.resp} | ${t.prazo_fixed||t.prazo||'—'} | ${STATUS_LABEL[t.status]}`))
     copyText(lines.join('\n')); onToast('Reunião copiada ✓')
   }
   const th = { padding:'7px 12px', textAlign:'left', fontSize:10, fontWeight:600, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'.05em', whiteSpace:'nowrap', background:'var(--bg)', borderBottom:'1px solid var(--border)' }
-
-  // Show block even if no visible tasks, so user can add tasks
-  const showBlock = visibleTasks.length > 0 || (clientFilter === 'all' || meeting.team === clientFilter)
-  if (!showBlock) return null
+  const linkBtn = { fontSize:11, color:'var(--accent)', background:'none', border:'none', padding:'4px 8px', borderRadius:5, fontWeight:500, cursor:'pointer', textDecoration:'none', whiteSpace:'nowrap' }
 
   return (
-    <div style={{ marginBottom: 24 }}>
-      <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:10 }}>
-        <div style={{ width:28, height:28, borderRadius:6, background:color+'22', display:'flex', alignItems:'center', justifyContent:'center', fontSize:14, flexShrink:0 }}>{emoji}</div>
-        <div>
-          <div style={{ fontSize:13, fontWeight:600 }}>{meeting.title}</div>
-          <div style={{ fontSize:11, color:'var(--text-muted)' }}>
-            {meeting.date_label}
-            <span style={{ marginLeft:6, fontSize:10, background:meeting.source==='gemini'?'#E8F0FE':'#E6F4EE', color:meeting.source==='gemini'?'#1A4D8F':'#1A6B4A', padding:'1px 6px', borderRadius:10, fontWeight:500 }}>
-              {meeting.source==='gemini'?'✦ Gemini':'● tl;dv'}
-            </span>
+    <div style={{ marginBottom: 10, borderRadius: 8, border: `1px solid ${open ? color + '55' : 'var(--border)'}`, background: '#fff', overflow: 'hidden', borderLeft: `3px solid ${color}` }}>
+      {/* Cabeçalho clicável */}
+      <div role="button" tabIndex={0} aria-expanded={open}
+        onClick={onToggle}
+        onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onToggle() } }}
+        style={{ display:'flex', alignItems:'center', gap:12, padding:'11px 14px', cursor:'pointer', userSelect:'none', flexWrap:'wrap' }}
+        onMouseEnter={e => e.currentTarget.style.background = 'var(--bg)'}
+        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="2.5"
+          style={{ flexShrink:0, transition:'transform .15s', transform: open ? 'rotate(90deg)' : 'none' }}>
+          <polyline points="9 6 15 12 9 18"/>
+        </svg>
+        <div style={{ minWidth: 0, flex: '1 1 260px' }}>
+          <div style={{ fontSize:13, fontWeight:600, color:'var(--text)' }}>{meeting.title}</div>
+          <div style={{ fontSize:11, color:'var(--text-muted)', display:'flex', gap:8, alignItems:'center', flexWrap:'wrap' }}>
+            <span>📅 {dateLabel}</span>
+            {/inferida/i.test(meeting.date_label || '') && <span title="Data deduzida a partir das anotações; confirme abrindo a ata" style={{ fontSize:10, background:'var(--amber-soft)', color:'var(--amber)', padding:'1px 6px', borderRadius:10, fontWeight:500 }}>data a confirmar</span>}
+            <span>· {tasks.length} {tasks.length === 1 ? 'tarefa' : 'tarefas'}</span>
+            {sourceLabel && <span style={{ fontSize:10, background:'var(--accent-soft)', color:'var(--accent)', padding:'1px 6px', borderRadius:10, fontWeight:500 }}>{sourceLabel}</span>}
           </div>
         </div>
-        <div style={{ marginLeft:'auto', display:'flex', gap:6, alignItems:'center' }}>
-          <button onClick={handleCopyMeeting} style={{ fontSize:11, color:'var(--accent)', background:'none', border:'none', padding:'4px 8px', borderRadius:5, fontWeight:500, cursor:'pointer' }}
+        <StatusCounts counts={counts} compact />
+        <div style={{ display:'flex', gap:4, alignItems:'center' }} onClick={e => e.stopPropagation()}>
+          {meeting.ata_url && <a href={meeting.ata_url} target="_blank" rel="noreferrer" style={linkBtn}
             onMouseEnter={e=>e.currentTarget.style.background='var(--accent-soft)'}
-            onMouseLeave={e=>e.currentTarget.style.background='none'}>Copiar reunião</button>
-          <button onClick={() => setShowNewTask(true)} style={{ display:'flex', alignItems:'center', gap:4, fontSize:11, color:'#fff', background:'var(--accent)', border:'none', padding:'5px 10px', borderRadius:5, fontWeight:500, cursor:'pointer' }}
-            onMouseEnter={e=>e.currentTarget.style.background='#163f77'}
-            onMouseLeave={e=>e.currentTarget.style.background='var(--accent)'}>
+            onMouseLeave={e=>e.currentTarget.style.background='none'}>Abrir ata ↗</a>}
+          <button onClick={handleCopyMeeting} style={linkBtn}
+            onMouseEnter={e=>e.currentTarget.style.background='var(--accent-soft)'}
+            onMouseLeave={e=>e.currentTarget.style.background='none'}>Copiar</button>
+          <button onClick={() => setShowNewTask(true)} title="Nova tarefa nesta reunião" style={{ display:'flex', alignItems:'center', gap:4, fontSize:11, color:'#fff', background:'var(--accent)', border:'none', padding:'5px 9px', borderRadius:5, fontWeight:500, cursor:'pointer' }}>
             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            Nova tarefa
+            Tarefa
           </button>
         </div>
       </div>
-      <div style={{ borderRadius:8, border:'1px solid var(--border)', overflow:'hidden', background:'#fff' }}>
-        <table style={{ width:'100%', borderCollapse:'collapse' }}>
-          <colgroup><col/><col style={{width:110}}/><col style={{width:82}}/><col style={{width:115}}/><col style={{width:105}}/><col style={{width:72}}/></colgroup>
-          <thead><tr><th style={th}>Tarefa</th><th style={th}>Responsável</th><th style={th}>Data</th><th style={th}>Prazo</th><th style={th}>Status</th><th style={th}></th></tr></thead>
-          <tbody>
-            {visibleTasks.map(t => <TaskRow key={t.id} task={t} meeting={meeting} onUpdate={onUpdate} onToast={onToast}/>)}
-            {visibleTasks.length === 0 && (
-              <tr><td colSpan={6} style={{ padding:'20px 16px', textAlign:'center', color:'var(--text-muted)', fontSize:13 }}>
-                Nenhuma tarefa visível · <button onClick={() => setShowNewTask(true)} style={{ color:'var(--accent)', background:'none', border:'none', cursor:'pointer', fontSize:13, fontWeight:500 }}>+ Adicionar tarefa</button>
-              </td></tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+
+      {/* Corpo: tarefas */}
+      {open && (
+        <div style={{ borderTop:'1px solid var(--border)' }}>
+          <table style={{ width:'100%', borderCollapse:'collapse' }}>
+            <colgroup><col/><col style={{width:150}}/><col style={{width:90}}/><col style={{width:115}}/><col style={{width:105}}/><col style={{width:72}}/></colgroup>
+            <thead><tr><th style={th}>Tarefa</th><th style={th}>Responsável</th><th style={th}>Reunião</th><th style={th}>Prazo</th><th style={th}>Status</th><th style={th}></th></tr></thead>
+            <tbody>
+              {visibleTasks.map(t => <TaskRow key={t.id} task={t} meeting={meeting} catalogo={catalogo} onUpdate={onUpdate} onToast={onToast}/>)}
+              {visibleTasks.length === 0 && (
+                <tr><td colSpan={6} style={{ padding:'18px 16px', textAlign:'center', color:'var(--text-muted)', fontSize:13 }}>
+                  Nenhuma tarefa {statusFilter !== 'all' ? `com status "${STATUS_LABEL[statusFilter]}"` : 'nesta reunião'} · <button onClick={() => setShowNewTask(true)} style={{ color:'var(--accent)', background:'none', border:'none', cursor:'pointer', fontSize:13, fontWeight:500 }}>+ Adicionar tarefa</button>
+                </td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
       {showNewTask && (
-        <NewTaskModal
-          meeting={meeting}
-          onClose={() => setShowNewTask(false)}
-          onSave={onAdd}
-          onToast={onToast}
-        />
+        <NewTaskModal meeting={meeting} onClose={() => setShowNewTask(false)} onSave={onAdd} onToast={onToast} />
       )}
     </div>
+  )
+}
+
+// ─── ClientSection ────────────────────────────────────────────
+// Agrupa os blocos de reunião de um cliente, da reunião mais recente para a mais antiga
+function ClientSection({ client, catalogo, meetings, tasksByMeeting, statusFilter, isOpen, onToggle, onSetAll, onUpdate, onAdd, onToast }) {
+  const color = colorFor(client)
+  const allTasks = meetings.flatMap(m => tasksByMeeting[m.id] || [])
+  const counts = countByStatus(allTasks)
+  const allOpen = meetings.every(m => isOpen(m))
+  return (
+    <section style={{ marginBottom: 28 }}>
+      <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:10, flexWrap:'wrap' }}>
+        <div style={{ width:30, height:30, borderRadius:7, background:color+'22', display:'flex', alignItems:'center', justifyContent:'center', fontSize:15, flexShrink:0 }}>{TEAM_EMOJIS[client] || '🏥'}</div>
+        <div style={{ minWidth:0 }}>
+          <div style={{ fontSize:15, fontWeight:600, color:'var(--text)' }}>{client}</div>
+          <div style={{ fontSize:11, color:'var(--text-muted)' }}>{meetings.length} {meetings.length === 1 ? 'reunião' : 'reuniões'} · {allTasks.length} tarefas · última em {meetingDateLabel(meetings[0])}</div>
+        </div>
+        <div style={{ marginLeft:'auto', display:'flex', gap:10, alignItems:'center', flexWrap:'wrap' }}>
+          <StatusCounts counts={counts} />
+          <button onClick={() => onSetAll(meetings, !allOpen)} style={{ fontSize:11, color:'var(--text-muted)', background:'#fff', border:'1px solid var(--border)', padding:'4px 10px', borderRadius:5, cursor:'pointer', whiteSpace:'nowrap' }}>
+            {allOpen ? 'Recolher todas' : 'Expandir todas'}
+          </button>
+        </div>
+      </div>
+      {meetings.map(m => (
+        <MeetingBlock key={m.id} meeting={m} catalogo={catalogo} tasks={tasksByMeeting[m.id] || []} statusFilter={statusFilter}
+          open={isOpen(m)} onToggle={() => onToggle(m)} onUpdate={onUpdate} onAdd={onAdd} onToast={onToast} />
+      ))}
+    </section>
   )
 }
 
@@ -705,6 +843,8 @@ function MeetingBlock({ meeting, tasks, clientFilter, statusFilter, onUpdate, on
 export default function App() {
   const [meetings, setMeetings] = useState([])
   const [tasks, setTasks] = useState([])
+  const [clients, setClients] = useState(() => ALL_CLIENTS.map(c => ({ ...c, nome: c.key })))
+  const [catalogo, setCatalogo] = useState([])
   const [loading, setLoading] = useState(true)
   const [clientFilter, setClientFilter] = useState('all')
   const [statusFilter, setStatusFilter] = useState('all')
@@ -712,16 +852,28 @@ export default function App() {
   const [showCopy, setShowCopy] = useState(false)
   const [syncing, setSyncing] = useState(false)
   const [lastSync, setLastSync] = useState(null)
-  const [activeTab, setActiveTab] = useState('tarefas') // 'tarefas' | 'reports'
+  const [activeTab, setActiveTab] = useState('tarefas') // 'tarefas' | 'reports' | 'sop'
+  const [openState, setOpenState] = useState({}) // { [meetingId]: true|false } — escolha explícita do usuário
 
   const showToast = (msg) => setToast(msg)
 
   const loadData = useCallback(async () => {
     setLoading(true)
-    const [{ data: mData }, { data: tData }] = await Promise.all([
+    const [{ data: mData }, { data: tData }, { data: cData }, { data: sData }] = await Promise.all([
       supabase.from('bmo_meetings').select('*').order('created_at'),
       supabase.from('bmo_tasks').select('*').order('sort_order'),
+      supabase.from('bmo_clientes').select('*').order('nome'),
+      supabase.from('bmo_sop_catalogo').select('*').eq('ativo', true).order('sequencia'),
     ])
+    if (cData?.length) {
+      const idx = {}
+      cData.forEach(c => { [c.nome, ...(c.grafias || [])].forEach(n => { idx[norm(n)] = c.nome }) })
+      CLIENT_INDEX = idx
+      CLIENT_IDS = Object.fromEntries(cData.map(c => [c.nome, c.id]))
+      CLIENT_NAMES = Object.fromEntries(cData.map(c => [c.id, c.nome]))
+      setClients(toClients(cData))
+    }
+    if (sData) setCatalogo(sData)
     if (mData) setMeetings(mData)
     if (tData) setTasks(tData)
     setLoading(false)
@@ -737,6 +889,7 @@ export default function App() {
       })
       .on('postgres_changes', { event:'INSERT', schema:'public', table:'bmo_meetings' }, () => loadData())
       .on('postgres_changes', { event:'INSERT', schema:'public', table:'bmo_tasks' }, () => loadData())
+      .on('postgres_changes', { event:'*', schema:'public', table:'bmo_clientes' }, () => loadData())
       .subscribe()
     return () => supabase.removeChannel(channel)
   }, [loadData])
@@ -750,7 +903,7 @@ export default function App() {
   }, [])
 
   const exportCSV = () => {
-    const filtered = meetings.filter(m => clientFilter==='all'||m.team===clientFilter||(m.has_cliente&&tasks.some(t=>t.meeting_id===m.id&&t.cliente===clientFilter)))
+    const filtered = meetings.filter(m => clientFilter==='all'||sameClient(m.team, clientFilter)||(m.has_cliente&&tasks.some(t=>t.meeting_id===m.id&&sameClient(t.cliente, clientFilter))))
     const rows = [['Reunião','Data Reunião','Equipe','Tarefa','Responsável','Cliente','Prazo','Status']]
     filtered.forEach(m => {
       tasks.filter(t=>t.meeting_id===m.id&&t.status!=='bloqueado'&&(statusFilter==='all'||t.status===statusFilter)).forEach(t=>{
@@ -765,21 +918,44 @@ export default function App() {
 
   const handleSync = async () => { setSyncing(true); await loadData(); setSyncing(false); showToast('Base atualizada ✓') }
 
+  // ── Agrupamento: cliente → reuniões (mais recente primeiro) → tarefas ──
+  const meetingById = Object.fromEntries(meetings.map(m => [m.id, m]))
+  const tasksByMeeting = {}
+  tasks.forEach(t => { (tasksByMeeting[t.meeting_id] ||= []).push(t) })
+  const groupsMap = {}
+  meetings.forEach(m => {
+    if (!(tasksByMeeting[m.id]?.length) && !m.cliente_id) return // reunião vazia sem cliente: não exibe
+    ;(groupsMap[meetingClient(m)] ||= []).push(m)
+  })
+  Object.values(groupsMap).forEach(list => list.sort((a, b) => meetingDate(b) - meetingDate(a)))
+  const clientNames = Object.keys(groupsMap).sort((a, b) => a.localeCompare(b, 'pt-BR'))
+  const visibleGroups = clientNames
+    .filter(c => clientFilter === 'all' || sameClient(c, clientFilter))
+    .map(c => ({ client: c, meetings: groupsMap[c].filter(m => statusFilter === 'all' || (tasksByMeeting[m.id] || []).some(t => t.status === statusFilter)) }))
+    .filter(g => g.meetings.length > 0)
+
+  // Aberto por padrão: só a reunião mais recente de cada cliente
+  const latestIds = new Set(Object.values(groupsMap).map(list => list[0]?.id))
+  const isOpen = m => openState[m.id] ?? latestIds.has(m.id)
+  const toggleMeeting = m => setOpenState(prev => ({ ...prev, [m.id]: !isOpen(m) }))
+  const setAllMeetings = (list, value) => setOpenState(prev => ({ ...prev, ...Object.fromEntries(list.map(m => [m.id, value])) }))
+  const setAllVisible = value => setAllMeetings(visibleGroups.flatMap(g => g.meetings), value)
+
   const filteredTasks = tasks.filter(t => {
-    if (t.status === 'bloqueado') return false
-    const m = meetings.find(x=>x.id===t.meeting_id); if (!m) return false
-    const clientOk = clientFilter==='all'||m.team===clientFilter||(m.has_cliente&&t.cliente===clientFilter)
-    const statusOk = statusFilter==='all'||t.status===statusFilter
+    const m = meetingById[t.meeting_id]; if (!m) return false
+    const clientOk = clientFilter === 'all' || sameClient(meetingClient(m), clientFilter)
+    const statusOk = statusFilter === 'all' || t.status === statusFilter
     return clientOk && statusOk
   })
   const done = filteredTasks.filter(t=>t.status==='concluido').length
   const pending = filteredTasks.filter(t=>t.status==='pendente').length
+  const visibleMeetingCount = visibleGroups.reduce((n, g) => n + g.meetings.length, 0)
 
   const clientCounts = {}
-  tasks.filter(t=>t.status!=='bloqueado').forEach(t => {
-    const m = meetings.find(x=>x.id===t.meeting_id); if (!m) return
-    clientCounts[m.team] = (clientCounts[m.team]||0)+1
-    if (m.has_cliente&&t.cliente&&t.cliente!=='Não identificado') clientCounts[t.cliente]=(clientCounts[t.cliente]||0)+1
+  tasks.forEach(t => {
+    const m = meetingById[t.meeting_id]; if (!m) return
+    const c = meetingClient(m)
+    clientCounts[c] = (clientCounts[c] || 0) + 1
   })
 
   const btnBase = { display:'inline-flex', alignItems:'center', gap:6, padding:'7px 14px', borderRadius:5, fontSize:13, fontWeight:500, cursor:'pointer', border:'1px solid var(--border-strong)', background:'#fff', color:'var(--text)', whiteSpace:'nowrap' }
@@ -811,6 +987,7 @@ export default function App() {
           <div style={{ display:'flex', gap:4, marginLeft:24, background:'var(--bg)', borderRadius:8, padding:4 }}>
             <button style={tabStyle('tarefas')} onClick={()=>setActiveTab('tarefas')}>📋 Tarefas</button>
             <button style={tabStyle('reports')} onClick={()=>setActiveTab('reports')}>📊 Reports</button>
+            <button style={tabStyle('sop')} onClick={()=>setActiveTab('sop')}>🧭 Processo SOP</button>
           </div>
         </div>
         <div style={{ display:'flex', gap:8, alignItems:'center' }}>
@@ -842,7 +1019,7 @@ export default function App() {
               <button style={sidebarBtn('all','#9B9890')} onClick={()=>setClientFilter('all')}>
                 <div style={{ width:8, height:8, borderRadius:'50%', background:'#9B9890', flexShrink:0 }}/>
                 Todos
-                <span style={{ marginLeft:'auto', fontSize:11, background:'var(--bg)', border:'1px solid var(--border)', padding:'1px 6px', borderRadius:10, color:'var(--text-muted)' }}>{tasks.filter(t=>t.status!=='bloqueado').length}</span>
+                <span style={{ marginLeft:'auto', fontSize:11, background:'var(--bg)', border:'1px solid var(--border)', padding:'1px 6px', borderRadius:10, color:'var(--text-muted)' }}>{tasks.length}</span>
               </button>
             </div>
             <div style={{ height:1, background:'var(--border)', margin:'4px 12px' }}/>
@@ -858,7 +1035,7 @@ export default function App() {
             <div style={{ height:1, background:'var(--border)', margin:'4px 12px' }}/>
             <div style={{ padding:'8px 12px' }}>
               <div style={{ fontSize:10, fontWeight:600, color:'var(--text-light)', textTransform:'uppercase', letterSpacing:'.06em', marginBottom:8, padding:'0 4px' }}>Clínicas</div>
-              {ALL_CLIENTS.map(({key,color})=>(
+              {clients.map(({key,color})=>(
                 <button key={key} style={sidebarBtn(key,color)} onClick={()=>setClientFilter(key)}>
                   <div style={{ width:8, height:8, borderRadius:'50%', background:color, flexShrink:0 }}/>{key}
                   <span style={{ marginLeft:'auto', fontSize:11, background:clientFilter===key?'var(--accent)':'var(--bg)', border:`1px solid ${clientFilter===key?'var(--accent)':'var(--border)'}`, padding:'1px 6px', borderRadius:10, color:clientFilter===key?'#fff':'var(--text-muted)' }}>{clientCounts[key]||0}</span>
@@ -882,20 +1059,30 @@ export default function App() {
           {activeTab === 'tarefas' && <>
             {/* Stats */}
             <div style={{ display:'flex', gap:12, marginBottom:22, flexWrap:'wrap' }}>
-              {[{num:filteredTasks.length,lbl:'tarefas',color:'var(--text)'},{num:done,lbl:'concluídas',color:'#1A6B4A'},{num:pending,lbl:'pendentes',color:'#8A5A00'},{num:meetings.length,lbl:'reuniões',color:'#5B3FA0'}].map(({num,lbl,color})=>(
+              {[{num:filteredTasks.length,lbl:'tarefas',color:'var(--text)'},{num:done,lbl:'concluídas',color:'#1A6B4A'},{num:pending,lbl:'pendentes',color:'#8A5A00'},{num:visibleMeetingCount,lbl:'reuniões',color:'#5B3FA0'}].map(({num,lbl,color})=>(
                 <div key={lbl} style={{ background:'#fff', border:'1px solid var(--border)', borderRadius:8, padding:'14px 18px', minWidth:100 }}>
                   <div style={{ fontSize:22, fontWeight:600, color }}>{loading?'—':num}</div>
                   <div style={{ fontSize:11, color:'var(--text-muted)', marginTop:2 }}>{lbl}</div>
                 </div>
               ))}
+              <div style={{ marginLeft:'auto', display:'flex', gap:6, alignItems:'flex-end' }}>
+                <button onClick={() => setAllVisible(true)} style={{ fontSize:12, color:'var(--text-muted)', background:'#fff', border:'1px solid var(--border)', padding:'6px 12px', borderRadius:5, cursor:'pointer' }}>Expandir tudo</button>
+                <button onClick={() => setAllVisible(false)} style={{ fontSize:12, color:'var(--text-muted)', background:'#fff', border:'1px solid var(--border)', padding:'6px 12px', borderRadius:5, cursor:'pointer' }}>Recolher tudo</button>
+              </div>
             </div>
             {loading ? (
               <div style={{ textAlign:'center', padding:60, color:'var(--text-muted)', fontSize:14 }}>
                 <div style={{ fontSize:32, marginBottom:12, animation:'spin 1s linear infinite', display:'inline-block' }}>⟳</div>
                 <div>Carregando dados do Supabase...</div>
               </div>
+            ) : visibleGroups.length === 0 ? (
+              <div style={{ textAlign:'center', padding:60, color:'var(--text-muted)', fontSize:14 }}>Nenhuma reunião com tarefas para este filtro.</div>
             ) : (
-              meetings.map(m => <MeetingBlock key={m.id} meeting={m} tasks={tasks.filter(t=>t.meeting_id===m.id)} clientFilter={clientFilter} statusFilter={statusFilter} onUpdate={updateTask} onAdd={addTask} onToast={showToast}/>)
+              visibleGroups.map(g => (
+                <ClientSection key={g.client} client={g.client} catalogo={catalogo} meetings={g.meetings} tasksByMeeting={tasksByMeeting}
+                  statusFilter={statusFilter} isOpen={isOpen} onToggle={toggleMeeting} onSetAll={setAllMeetings}
+                  onUpdate={updateTask} onAdd={addTask} onToast={showToast}/>
+              ))
             )}
           </>}
 
@@ -908,8 +1095,12 @@ export default function App() {
                   Semana atual: <strong>{getWeekRange().label}</strong> · Tarefas bloqueadas são excluídas automaticamente.
                 </p>
               </div>
-              <ReportView meetings={meetings} tasks={tasks} onToast={showToast}/>
+              <ReportView clients={clients} meetings={meetings} tasks={tasks} onToast={showToast}/>
             </div>
+          )}
+
+          {activeTab === 'sop' && (
+            <SopView clients={clients} catalogo={catalogo} meetings={meetings} tasks={tasks} onClientsChange={loadData} onReload={loadData} onToast={showToast}/>
           )}
         </main>
       </div>
